@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>소리 암호 작전</title>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #F2F4F1; --surface: #FFFFFF; --surface-2: #ECF0ED; --ink: #16201C; --muted: #58675F;
+    --line: #D3DBD6; --grid: #E2E8E4;
+    --analog: #0F7F7A; --sample: #C0720E; --digital: #2C4C8E; --mission: #B8471E;
+    --ok: #217A48; --ok-bg: #E0F1E6; --bad: #BA3B29; --bad-bg: #F8E3DE; --warn-bg: #FBF0DC; --warn: #8A5A0B;
+    --focus: #2C4C8E;
+    --display: "Black Han Sans", "IBM Plex Sans KR", "Apple SD Gothic Neo", sans-serif;
+    --sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0E1312; --surface: #161D1B; --surface-2: #1C2522; --ink: #E4EBE8; --muted: #94A49D;
+      --line: #2A3431; --grid: #1F2926; --analog: #43C4BB; --sample: #F0A544; --digital: #93ADEA; --mission: #F08A5D;
+      --ok: #62CB90; --ok-bg: #15301F; --bad: #F2806D; --bad-bg: #37201B; --warn-bg: #33280F; --warn: #F1C271; --focus: #93ADEA;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0E1312; --surface: #161D1B; --surface-2: #1C2522; --ink: #E4EBE8; --muted: #94A49D;
+    --line: #2A3431; --grid: #1F2926; --analog: #43C4BB; --sample: #F0A544; --digital: #93ADEA; --mission: #F08A5D;
+    --ok: #62CB90; --ok-bg: #15301F; --bad: #F2806D; --bad-bg: #37201B; --warn-bg: #33280F; --warn: #F1C271; --focus: #93ADEA;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; word-break: keep-all; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 26px 18px 64px; display: flex; flex-direction: column; gap: 18px; }
+  h1, h2, h3 { margin: 0; text-wrap: balance; }
+  button, input, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  header.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 14px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--muted); }
+  h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 42px); letter-spacing: -.01em; line-height: 1.15; }
+  h1 .tag { color: var(--mission); }
+  .lead { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
+  .opcode { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 2px solid var(--ink); border-radius: 10px; padding: 8px 10px 8px 14px; }
+  .opcode label { font-family: var(--display); font-size: 16px; }
+  .opcode input { width: 64px; text-align: center; font-family: var(--mono); font-weight: 700; font-size: 18px; border: 1px solid var(--line); border-radius: 6px; padding: 3px; background: var(--surface-2); }
+
+  .btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 13px; cursor: pointer; font-size: 14px; font-weight: 500; }
+  .btn:hover { border-color: var(--muted); }
+  .btn.primary { background: var(--digital); border-color: var(--digital); color: var(--surface); font-weight: 600; }
+  .btn.go { background: var(--mission); border-color: var(--mission); color: #fff; font-weight: 700; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  nav.stages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  @media (max-width: 600px) { nav.stages { grid-template-columns: 1fr; } }
+  .stage-tab { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 1px; }
+  .stage-tab .k { font-family: var(--mono); font-size: 11.5px; color: var(--muted); letter-spacing: .06em; }
+  .stage-tab .t { font-family: var(--display); font-size: 19px; line-height: 1.3; }
+  .stage-tab .d { font-size: 12.5px; color: var(--muted); }
+  .stage-tab[aria-selected="true"] { border: 2px solid var(--mission); padding: 9px 13px; }
+  .stage-tab[aria-selected="true"] .k { color: var(--mission); }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .brief { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; background: var(--warn-bg); border-radius: 12px; padding: 12px 14px; }
+  .brief .stamp { font-family: var(--display); color: var(--mission); border: 2px solid var(--mission); border-radius: 6px; padding: 2px 8px; transform: rotate(-4deg); font-size: 15px; white-space: nowrap; }
+  .brief p { margin: 0; font-size: 14.5px; }
+  .brief b { color: var(--ink); }
+  .head-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+  .head-row h2 { font-family: var(--display); font-weight: 400; font-size: 22px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button { border: 0; background: var(--surface); padding: 7px 12px; cursor: pointer; font-family: var(--mono); font-size: 13px; border-right: 1px solid var(--line); }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] { background: var(--digital); color: var(--surface); font-weight: 600; }
+  .seg.role button { font-family: var(--sans); font-weight: 600; font-size: 14px; padding: 8px 16px; }
+  .seg.role button[aria-pressed="true"] { background: var(--mission); color: #fff; }
+  .lbl { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+
+  .chart { width: 100%; height: 290px; display: block; border-radius: 10px; background: var(--surface-2); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); }
+  .legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
+
+  .scroll { overflow-x: auto; }
+  table.cells { border-collapse: separate; border-spacing: 6px 0; font-variant-numeric: tabular-nums; }
+  table.cells th { font-weight: 500; font-size: 12px; color: var(--muted); text-align: left; padding: 4px 6px 4px 0; white-space: nowrap; }
+  table.cells td { text-align: center; padding: 4px 0; }
+  .cell { min-width: 56px; font-family: var(--mono); font-size: 14px; }
+  .val-sample { color: var(--sample); font-weight: 600; }
+  .cells input { width: 56px; text-align: center; font-family: var(--mono); font-size: 15px; font-weight: 600; padding: 6px 2px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+  .cells input.wide { width: 64px; letter-spacing: .05em; }
+  .cells input.ok { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); }
+  .cells input.bad { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); }
+  .diag { font-size: 11.5px; font-weight: 600; border-radius: 6px; padding: 2px 4px; display: inline-block; min-width: 56px; }
+  .diag.ok { background: var(--ok-bg); color: var(--ok); }
+  .diag.bad { background: var(--bad-bg); color: var(--bad); }
+  .diag.warn { background: var(--warn-bg); color: var(--warn); }
+
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .status { font-size: 14px; font-weight: 500; padding: 6px 10px; border-radius: 8px; }
+  .status.ok { background: var(--ok-bg); color: var(--ok); }
+  .status.bad { background: var(--bad-bg); color: var(--bad); }
+  .status.info { background: var(--surface-2); color: var(--muted); }
+  .status.warn { background: var(--warn-bg); color: var(--warn); }
+  .hint { font-size: 13.5px; color: var(--muted); background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+  .hint b { color: var(--ink); }
+  .code-table { display: grid; grid-template-columns: repeat(8, minmax(52px, 1fr)); gap: 6px; font-family: var(--mono); font-size: 13px; }
+  @media (max-width: 520px) { .code-table { grid-template-columns: repeat(4, 1fr); } }
+  .code-table div { background: var(--surface-2); border-radius: 8px; padding: 6px; text-align: center; }
+  .code-table div b { display: block; font-size: 15px; }
+
+  .cipher { border: 2px dashed var(--ink); border-radius: 12px; padding: 14px 16px; background: var(--surface); display: flex; flex-direction: column; gap: 8px; }
+  .cipher .meta { font-size: 13px; color: var(--muted); }
+  .cipher .bits { font-family: var(--mono); font-weight: 700; font-size: clamp(18px, 3.2vw, 26px); letter-spacing: .06em; overflow-wrap: anywhere; line-height: 1.5; }
+  .cipher .bits span { margin-right: .55em; }
+  textarea#rawIn { width: 100%; min-height: 70px; font-family: var(--mono); font-size: 18px; letter-spacing: .06em; border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--surface); }
+
+  .score { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; background: var(--surface-2); border-radius: 12px; padding: 14px 16px; }
+  .score .stars { font-size: 30px; letter-spacing: 4px; color: var(--sample); line-height: 1; }
+  .score .big { font-family: var(--mono); font-size: 28px; font-weight: 700; }
+  .score p { margin: 0; font-size: 14px; max-width: 58ch; }
+
+  .lab-grid { display: grid; grid-template-columns: 1fr 280px; gap: 16px; }
+  @media (max-width: 840px) { .lab-grid { grid-template-columns: 1fr; } }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+  .stat span { display: block; font-size: 12px; color: var(--muted); }
+  .stat b { font-family: var(--mono); font-size: 20px; font-variant-numeric: tabular-nums; }
+  .stat.full { grid-column: 1 / -1; }
+  .meter { height: 10px; border-radius: 6px; background: var(--grid); overflow: hidden; margin-top: 6px; }
+  .meter > div { height: 100%; background: var(--ok); border-radius: 6px; transition: width .2s; }
+  .meter.over > div { background: var(--bad); }
+  .bigscore { font-family: var(--display) !important; font-size: 40px !important; line-height: 1.1; }
+  .records { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  @media (max-width: 560px) { .records { grid-template-columns: 1fr; } }
+  .rec { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .rec b { font-family: var(--mono); font-size: 16px; display: block; }
+  .questions { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; }
+  .mb { border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  .summary { display: grid; grid-template-columns: 160px 1fr; gap: 6px 14px; font-size: 14px; }
+  .summary dt { color: var(--muted); }
+  .summary dd { margin: 0; font-family: var(--mono); overflow-wrap: anywhere; }
+  @media (max-width: 520px) { .summary { grid-template-columns: 1fr; } .summary dd { margin-bottom: 6px; } }
+  #copyArea { width: 100%; font-family: var(--mono); font-size: 12px; min-height: 110px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--surface-2); }
+  details.teacher { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 18px; }
+  details.teacher summary { cursor: pointer; font-weight: 600; }
+  details.teacher ol { margin: 10px 0 4px; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+  .quiz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .quiz-grid { grid-template-columns: 1fr; } }
+  .quiz-card { position: relative; text-align: left; border: 2px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; }
+  .quiz-card:hover:not(:disabled) { border-color: var(--digital); }
+  .quiz-card:disabled { cursor: default; }
+  .quiz-card.right { border-color: var(--ok); background: var(--ok-bg); }
+  .quiz-card.wrong { border-color: var(--bad); background: var(--bad-bg); }
+  .qlabel { font-family: var(--display); font-size: 26px; line-height: 1; }
+  .quiz-card.chosen .qlabel::after { content: " · 내 선택"; font-family: var(--sans); font-size: 13px; color: var(--muted); }
+  .mini { width: 100%; height: 190px; display: block; border-radius: 8px; background: var(--surface-2); }
+  .qinfo { font-size: 13.5px; color: var(--muted); min-height: 2.8em; }
+  .qinfo b { color: var(--ink); font-family: var(--mono); }
+  .concl { display: flex; flex-direction: column; gap: 10px; }
+  .concl-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; font-size: 14.5px; }
+  .concl-row .seg button { font-family: var(--sans); font-weight: 600; }
+  details.expert { border: 1px dashed var(--line); border-radius: 12px; padding: 10px 14px; }
+  details.expert summary { cursor: pointer; font-weight: 600; }
+  .teacher-audio { background: var(--surface-2); border-radius: 10px; padding: 8px 12px; }
+  input.txt { font-family: var(--sans); font-size: 15px; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; background: var(--surface); width: 140px; }
+  .report-card { border: 2px solid var(--ink); border-radius: 14px; padding: 16px 18px; background: var(--surface); display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
+  .rc-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+  .rc-title { font-family: var(--display); font-size: 20px; }
+  .rc-who { font-weight: 700; font-size: 16px; }
+  .rc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 520px) { .rc-grid { grid-template-columns: 1fr; } }
+  .rc-cell { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; }
+  .rc-cell span { display: block; font-size: 12px; color: var(--muted); }
+  .rc-cell b { font-size: 15px; overflow-wrap: anywhere; }
+  .rc-cell b.mono { font-family: var(--mono); letter-spacing: .03em; }
+  .rc-note { font-size: 15px; font-weight: 500; }
+  .rc-note.empty { color: var(--muted); font-weight: 400; }
+  .submit-guide { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; }
+  @media (max-width: 640px) { .submit-guide { grid-template-columns: 1fr; } }
+  .submit-guide > div { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+  .keys { color: var(--muted); font-size: 13px; }
+  .steps { margin: 8px 0 0; padding-left: 20px; font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+  .steps b { color: var(--ink); }
+  .card-img { margin: 0; display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
+  .card-img figcaption { font-size: 13px; color: var(--muted); }
+  .card-img figcaption b { color: var(--ink); }
+  .card-img img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  [hidden] { display: none !important; }
+  kbd { font-family: var(--mono); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--surface); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">중학교 정보 · II-1-② 다양한 데이터의 디지털 표현 · 소리</div>
+      <h1>소리 암호 <span class="tag">작전</span></h1>
+      <p class="lead">소리를 0과 1로만 바꿔 짝에게 보내고, 받은 0과 1로 소리를 되살립니다. 두 번째 작전에서는 정해진 비트 안에 소리를 가장 잘 담는 방법을 찾습니다.</p>
+    </div>
+    <div class="opcode">
+      <label for="op">작전 번호</label>
+      <input id="op" type="number" min="1" max="99" value="1" inputmode="numeric">
+    </div>
+  </header>
+
+  <nav class="stages" role="tablist" aria-label="작전">
+    <button class="stage-tab" role="tab" data-stage="1" id="tabS1"><span class="k">작전 1 · 짝 활동</span><span class="t">비밀 소리 전송</span><span class="d">표본화 · 양자화 · 부호화 · 해독</span></button>
+    <button class="stage-tab" role="tab" data-stage="2" id="tabS2"><span class="k">작전 2 · 개인 도전</span><span class="t">눈으로 맞히기</span><span class="d">어느 쪽이 원래 소리에 가까울까</span></button>
+    <button class="stage-tab" role="tab" data-stage="3" id="tabS3"><span class="k">작전 보고</span><span class="t">결과 정리</span><span class="d">결과 카드 · 통합학습창 제출</span></button>
+  </nav>
+
+  <!-- ================= STAGE 1 ================= -->
+  <section class="panel" id="stage1" role="tabpanel" aria-labelledby="tabS1">
+    <div class="head-row">
+      <h2>작전 1 · 비밀 소리 전송</h2>
+      <div class="row">
+        <div><span class="lbl">내 역할</span><div class="seg role" id="roleSeg"></div></div>
+        <div><span class="lbl">표본화 간격 (짝과 약속)</span><div class="seg" id="intSeg"></div></div>
+      </div>
+    </div>
+
+    <!-- SENDER -->
+    <div id="sender">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="brief"><span class="stamp">극비</span><p><b>보내는 요원</b>의 임무 · 이 소리는 너만 볼 수 있다. 소리를 <b>0과 1만으로</b> 바꿔서 짝에게 쪽지로 건네거나 말로 불러 줘라. 짝은 그 0과 1만 보고 소리를 되살린다. 한 칸이라도 틀리면 소리가 어긋난다.</p></div>
+        <canvas class="chart" id="cSend" role="img" aria-label="보내는 요원이 보는 아날로그 소리 파형"></canvas>
+        <div class="legend"><span><i style="background:var(--analog)"></i>아날로그 소리</span><span><i class="dot" style="background:var(--sample)"></i>표본(이 시간에 잰 크기)</span></div>
+        <div class="scroll"><table class="cells" id="tSend"></table></div>
+        <div class="hint"><b>① 양자화</b> 소수 첫째 자리가 5 이상이면 올리고 4 이하면 버린다 (3.5 → 4, 3.4 → 3) · <b>② 부호화</b> 3비트는 왼쪽부터 4·2·1 자리 (5 = 4+1 → 101)</div>
+        <div class="row">
+          <button class="btn" type="button" id="selfCheck">스스로 점검</button>
+          <span class="status info" id="checkLeft">점검 기회 2번</span>
+          <button class="btn go" type="button" id="makeCipher">암호문 만들기</button>
+          <span class="status" id="sendStatus" hidden></span>
+        </div>
+        <div class="cipher" id="cipherBox" hidden>
+          <div class="meta" id="cipherMeta"></div>
+          <div class="bits" id="cipherBits"></div>
+          <div class="meta">쪽지에 그대로 옮겨 적거나, 짝에게 3자리씩 또박또박 불러 주세요. 다 보냈으면 역할을 바꿔 한 판 더!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECEIVER -->
+    <div id="receiver" hidden>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="brief"><span class="stamp">수신</span><p><b>받는 요원</b>의 임무 · 짝이 보낸 0과 1을 받아 적고, <b>3자리씩 끊어서 정수로 해독</b>해 소리를 되살려라. 짝과 <b>같은 작전 번호, 같은 간격</b>이어야 원본과 비교할 수 있다.</p></div>
+        <div>
+          <label class="lbl" for="rawIn">받은 암호문 (0과 1만 입력, 띄어쓰기는 자유)</label>
+          <textarea id="rawIn" placeholder="예) 011 101 010 110 ..." autocomplete="off" spellcheck="false"></textarea>
+        </div>
+        <span class="status info" id="rawStatus"></span>
+        <div class="row"><button class="btn" type="button" id="toggleTable" aria-expanded="false">변환표 보기</button></div>
+        <div class="code-table" id="codeTable" hidden></div>
+        <div class="scroll"><table class="cells" id="tRecv"></table></div>
+        <canvas class="chart" id="cRecv" role="img" aria-label="받는 요원이 되살린 소리 그래프"></canvas>
+        <div class="legend"><span><i style="background:var(--digital)"></i>내가 되살린 소리</span><span id="legendOrig" hidden><i style="background:var(--analog)"></i>원래 소리</span></div>
+        <div class="row">
+          <button class="btn primary" type="button" id="checkDecode">해독 확인</button>
+          <button class="btn go" type="button" id="reveal">원본 공개하고 채점</button>
+          <span class="status" id="recvStatus" hidden></span>
+        </div>
+        <div class="score" id="scoreBox" hidden>
+          <div><div class="stars" id="stars"></div><div class="big" id="rate"></div></div>
+          <p id="scoreMsg"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STAGE 2 ================= -->
+  <section class="panel" id="stage2" role="tabpanel" aria-labelledby="tabS2" hidden>
+    <div class="head-row"><h2>작전 2 · 눈으로 맞히기</h2><span class="status info" id="quizProg"></span></div>
+    <div class="brief"><span class="stamp">판독</span><p>같은 소리를 서로 다른 방법으로 디지털로 바꿔 보냈다. 받는 쪽에서 되살린 소리 <b>A와 B 중 원래 소리(초록 선)에 더 가까운 쪽</b>을 골라라. 고르고 나면 각각 <b>데이터를 얼마나 썼는지</b> 공개된다.</p></div>
+    <div id="quizArea" style="display:flex;flex-direction:column;gap:12px">
+      <div class="quiz-grid">
+        <button type="button" class="quiz-card" id="pickA" aria-label="A를 고르기">
+          <span class="qlabel">A</span>
+          <canvas class="mini" id="cA" aria-hidden="true"></canvas>
+          <span class="qinfo" id="infoA"></span>
+        </button>
+        <button type="button" class="quiz-card" id="pickB" aria-label="B를 고르기">
+          <span class="qlabel">B</span>
+          <canvas class="mini" id="cB" aria-hidden="true"></canvas>
+          <span class="qinfo" id="infoB"></span>
+        </button>
+      </div>
+      <div class="row">
+        <span class="status" id="quizFeedback" hidden></span>
+        <button class="btn go" type="button" id="nextRound" hidden>다음 라운드 →</button>
+      </div>
+    </div>
+    <div id="conclusion" hidden style="display:flex;flex-direction:column;gap:12px">
+      <div class="score"><div><div class="stars" id="quizStars"></div><div class="big" id="quizScore"></div></div><p>5라운드 판독 완료! 이제 알아낸 규칙을 정리해 보자.</p></div>
+      <div class="concl" id="conclQs"></div>
+      <div class="row"><button class="btn primary" type="button" id="checkConcl">규칙 확인</button><span class="status" id="conclStatus" hidden></span><button class="btn" type="button" id="restartQuiz">처음부터 다시</button></div>
+    </div>
+    <details class="expert" id="expert">
+      <summary>고수 도전 · 용량 제한 챌린지 (빨리 끝낸 사람만)</summary>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px">
+        <p class="hint" style="margin:0">무전 채널이 좁다. <b>정해진 비트 수 안에서</b> 원래 소리와 가장 닮게 보낼 조합을 찾아라.</p>
+        <div class="row">
+          <div><span class="lbl">무전 채널 (비트 예산)</span><div class="seg" id="budgetSeg"></div></div>
+          <div><span class="lbl">표본화 간격</span><div class="seg" id="labInt"></div></div>
+          <div><span class="lbl">양자화 비트 수</span><div class="seg" id="labBits"></div></div>
+        </div>
+        <div class="lab-grid">
+          <canvas class="chart" id="cLab" role="img" aria-label="원래 소리와 전송된 소리 비교"></canvas>
+          <div class="stats">
+            <div class="stat"><span>표본 수</span><b id="stN"></b></div>
+            <div class="stat"><span>크기 단계</span><b id="stL"></b></div>
+            <div class="stat full"><span>사용한 비트 = 표본 수 × 비트 수</span><b id="stSize"></b><div class="meter" id="meter"><div id="meterFill"></div></div></div>
+            <div class="stat full"><span>닮음 점수</span><b class="bigscore" id="stScore"></b></div>
+          </div>
+        </div>
+        <div class="records" id="records"></div>
+        <div class="row">
+          <button class="btn" type="button" id="showBest">최고 조합 보기</button>
+          <span class="status info" id="bestText" hidden></span>
+        </div>
+        <div class="row teacher-audio">
+          <span class="lbl" style="margin:0">선생님 화면에서 들려주기</span>
+          <button class="btn" type="button" id="playA">▶ 원래 소리</button>
+          <button class="btn" type="button" id="playB">▶ 보낸 소리</button>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= STAGE 3 ================= -->
+  <section class="panel" id="stage3" role="tabpanel" aria-labelledby="tabS3" hidden>
+    <div class="head-row"><h2>작전 보고</h2></div>
+    <div class="row">
+      <div><label class="lbl" for="stuNo">학번</label><input class="txt" id="stuNo" type="text" inputmode="numeric" maxlength="6" placeholder="10312" autocomplete="off"></div>
+      <div><label class="lbl" for="stuName">이름</label><input class="txt" id="stuName" type="text" maxlength="10" placeholder="홍길동" autocomplete="off"></div>
+      <div style="flex:1;min-width:220px"><label class="lbl" for="stuNote">한 줄 소감 · 오늘 알게 된 것</label><input class="txt" id="stuNote" type="text" maxlength="60" placeholder="예) 비트를 많이 쓰면 소리가 정확해지지만 용량이 커진다" autocomplete="off" style="width:100%"></div>
+    </div>
+    <p class="hint" style="margin:0">학번·이름은 이 화면에만 보이고 <b>어디에도 저장되지 않습니다.</b> 새로고침하면 지워져요.</p>
+
+    <div class="report-card" id="reportCard" hidden>
+      <div class="rc-head"><span class="rc-title">소리 암호 작전 · 결과 카드</span><span class="rc-who" id="rcWho">학번 · 이름</span></div>
+      <div class="rc-grid">
+        <div class="rc-cell"><span>작전 1 · 역할 완수</span><b id="rcOp"></b></div>
+        <div class="rc-cell"><span>① 보내는 요원 · 보낸 암호문</span><b id="rcSent" class="mono"></b></div>
+        <div class="rc-cell"><span>② 받는 요원 · 되살린 결과</span><b id="rcRecv"></b></div>
+        <div class="rc-cell"><span>작전 2 · 눈으로 맞히기</span><b id="rcQuiz"></b></div>
+        <div class="rc-cell"><span>알아낸 규칙</span><b id="rcRule"></b></div>
+        <div class="rc-cell"><span>고수 도전</span><b id="rcExpert"></b></div>
+      </div>
+      <div class="rc-note" id="rcNote"></div>
+    </div>
+
+    <figure class="card-img">
+      <figcaption>내 결과 카드 (글을 입력하면 바로 바뀌어요) · 버튼이 안 되면 그림 위에서 <b>마우스 오른쪽 클릭</b>(크롬북은 <b>두 손가락으로 탭</b>) → <b>이미지 복사</b></figcaption>
+      <img id="cardImg" alt="소리 암호 작전 결과 카드 그림">
+    </figure>
+    <div class="submit-guide">
+      <div>
+        <b>이미지로 내기</b> · 캡처할 필요 없어요. 버튼 하나로 결과 카드가 그림이 됩니다.
+        <div class="row" style="margin-top:8px">
+          <button class="btn primary" type="button" id="imgCopyBtn">이미지 복사</button>
+          <button class="btn" type="button" id="imgSaveBtn">이미지 파일로 저장</button>
+        </div>
+        <span class="status ok" id="imgStatus" hidden></span>
+        <ol class="steps">
+          <li><b>이미지 복사</b> → 통합학습창 입력칸을 누르고 <kbd>Ctrl</kbd>+<kbd>V</kbd></li>
+          <li>붙여 넣기가 안 되면 <b>이미지 파일로 저장</b> → 통합학습창에서 파일 올리기</li>
+        </ol>
+      </div>
+      <div><b>글로 내기</b> · 버튼을 눌러 복사한 뒤 통합학습창 댓글·입력칸에 붙여 넣으세요.<br><div class="row" style="margin-top:6px"><button class="btn" type="button" id="copyBtn">결과 글 복사</button><span class="status ok" id="copied" hidden>복사했어요</span></div></div>
+    </div>
+    <textarea id="copyArea" readonly hidden aria-label="복사할 결과"></textarea>
+
+
+    <ol class="questions">
+      <li>작전 1에서 소리가 어긋났다면 어디서 틀렸나요? 양자화 · 부호화 · 쪽지 옮기기 · 해독 중에서 골라 보세요.</li>
+      <li>보내는 쪽과 받는 쪽이 <b>간격을 다르게</b> 알고 있었다면 무슨 일이 생길까요?</li>
+      <li>이미지의 <b>해상도</b>, 동영상의 <b>프레임률(FPS)</b>과 어떤 점이 닮았나요?</li>
+    </ol>
+    <div class="mb">🔌 <b>마이크로비트 연결</b> · <code>소리 크기</code> 블록은 <b>0~255</b> 사이 값을 줍니다. 크기를 몇 단계로 나눈 걸까요? 그러면 몇 비트일까요?</div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const T_MAX = 7, Y_MAX = 7;
+  const S = {
+    stage: 1, op: 1, role: "send", interval: 1,
+    send: { q: [], b: [], checks: 2, cipher: "" },
+    recv: { raw: "", dec: [], revealed: false, rate: null, stars: 0 },
+    lab: { budget: 16, interval: 1, bits: 3, best: {} },
+    // 결과 카드용 기록: 작전 번호를 바꿔도 지워지지 않는다 (보내기·받기를 서로 다른 작전으로 해도 둘 다 남음)
+    log: { sent: null, recv: null },
+  };
+
+  // ---------- waves ----------
+  function rng(seed) {
+    let a = (seed * 2654435761) >>> 0;
+    return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  function makeWave(seed) {
+    const r = rng(seed);
+    const f1 = 1.2 + r() * 1.3, f2 = 2.8 + r() * 2.2, p1 = r() * 6.283, p2 = r() * 6.283, a1 = 1.7 + r() * 0.7, a2 = 0.6 + r() * 0.6, base = 3.5 + (r() - 0.5) * 0.6;
+    return (t) => Math.min(6.9, Math.max(0.1, base + a1 * Math.sin(6.283 * f1 * t / T_MAX + p1) + a2 * Math.sin(6.283 * f2 * t / T_MAX + p2)));
+  }
+  let opWave = makeWave(1 * 7 + 3);
+  const labWave = makeWave(2026);
+  const round1 = (v) => Math.round(v * 10) / 10;
+  const samplesOf = (fn, interval) => { const out = [], n = Math.floor(T_MAX / interval + 1e-9); for (let i = 0; i <= n; i++) { const t = Math.round(i * interval * 100) / 100; out.push({ t, v: round1(fn(t)) }); } return out; };
+  const quant3 = (v) => Math.min(7, Math.max(0, Math.round(v)));
+  const toBin = (n) => n.toString(2).padStart(3, "0");
+  const fmtT = (t) => (Number.isInteger(t) ? t.toFixed(1) : String(t));
+  const opSamples = () => samplesOf(opWave, S.interval);
+
+  // ---------- drawing ----------
+  const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const PAD = { l: 34, r: 14, t: 16, b: 30 };
+  function frame(cv, levels) {
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+    const X = (t) => PAD.l + (t / T_MAX) * (w - PAD.l - PAD.r), Y = (v) => h - PAD.b - (v / Y_MAX) * (h - PAD.t - PAD.b);
+    const mono = tok("--mono").split(",")[0], grid = tok("--grid"), muted = tok("--muted");
+    ctx.font = "11px " + mono; ctx.lineWidth = 1;
+    const ys = levels || [0,1,2,3,4,5,6,7];
+    ys.forEach((v) => { ctx.strokeStyle = grid; ctx.beginPath(); ctx.moveTo(PAD.l, Y(v)); ctx.lineTo(w - PAD.r, Y(v)); ctx.stroke(); });
+    ctx.fillStyle = muted; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    (ys.length <= 9 ? ys : [0, 7]).forEach((v) => ctx.fillText(Number.isInteger(v) ? String(v) : v.toFixed(1), PAD.l - 8, Y(v)));
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (let s = 0; s <= T_MAX; s++) { ctx.strokeStyle = grid; ctx.beginPath(); ctx.moveTo(X(s), PAD.t); ctx.lineTo(X(s), h - PAD.b); ctx.stroke(); ctx.fillStyle = muted; ctx.fillText(s + "초", X(s), h - PAD.b + 8); }
+    return { ctx, w, h, X, Y, mono };
+  }
+  function drawWave(f, fn, alpha = 1) {
+    const { ctx, X, Y } = f; ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = tok("--analog"); ctx.lineWidth = 2.2; ctx.beginPath();
+    for (let i = 0; i <= 400; i++) { const t = (i / 400) * T_MAX; i ? ctx.lineTo(X(t), Y(fn(t))) : ctx.moveTo(X(t), Y(fn(t))); }
+    ctx.stroke(); ctx.restore();
+  }
+  function drawStair(f, pts, color) {
+    const { ctx, X, Y } = f; ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 2.6;
+    pts.forEach((p, i) => { if (p.v === undefined || p.v === null) return; const x1 = X(i < pts.length - 1 ? pts[i + 1].t : T_MAX); ctx.beginPath(); ctx.moveTo(X(p.t), Y(p.v)); ctx.lineTo(x1, Y(p.v)); ctx.stroke(); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(X(p.t), Y(p.v), 3.5, 0, 6.283); ctx.fill(); });
+    ctx.restore();
+  }
+  function drawDots(f, pts, labels) {
+    const { ctx, X, Y, mono } = f; ctx.save();
+    pts.forEach((p) => {
+      ctx.strokeStyle = tok("--sample"); ctx.globalAlpha = .35; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(X(p.t), Y(0)); ctx.lineTo(X(p.t), Y(p.v)); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.fillStyle = tok("--sample"); ctx.strokeStyle = tok("--surface"); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(p.t), Y(p.v), 5, 0, 6.283); ctx.fill(); ctx.stroke();
+      if (labels) { ctx.fillStyle = tok("--ink"); ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.font = "600 11px " + mono; ctx.fillText(p.v.toFixed(1), X(p.t), Y(p.v) - 8); }
+    });
+    ctx.restore();
+  }
+
+  // ---------- segmented ----------
+  function seg(el, items, get, set) {
+    el.innerHTML = items.map(([v, label]) => `<button type="button" data-v="${v}">${label}</button>`).join("");
+    const sync = () => el.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === String(get()))));
+    el.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; set(b.dataset.v); sync(); });
+    sync(); return sync;
+  }
+
+  // ================= STAGE 1: SENDER =================
+  function buildSender() {
+    const s = opSamples();
+    $("tSend").innerHTML =
+      "<tr><th>시간(초)</th>" + s.map((p) => `<td class="cell">${fmtT(p.t)}</td>`).join("") + "</tr>" +
+      "<tr><th>표본값</th>" + s.map((p) => `<td class="cell val-sample">${p.v.toFixed(1)}</td>`).join("") + "</tr>" +
+      "<tr><th>① 정수</th>" + s.map((p, i) => `<td><input id="sq${i}" type="number" min="0" max="7" inputmode="numeric" aria-label="${fmtT(p.t)}초 정수" value="${S.send.q[i] ?? ""}"></td>`).join("") + "</tr>" +
+      "<tr><th>② 이진수</th>" + s.map((p, i) => `<td><input class="wide" id="sb${i}" type="text" maxlength="3" inputmode="numeric" autocomplete="off" aria-label="${fmtT(p.t)}초 이진수" value="${S.send.b[i] ?? ""}"></td>`).join("") + "</tr>";
+    s.forEach((_, i) => {
+      $("sq" + i).addEventListener("input", (e) => { const v = parseInt(e.target.value, 10); S.send.q[i] = Number.isNaN(v) ? undefined : Math.max(0, Math.min(7, v)); e.target.classList.remove("ok", "bad"); hideCipher(); });
+      $("sb" + i).addEventListener("input", (e) => { e.target.value = e.target.value.replace(/[^01]/g, ""); S.send.b[i] = e.target.value; e.target.classList.remove("ok", "bad"); hideCipher(); });
+    });
+    updateChecks();
+  }
+  function renderSender() { const f = frame($("cSend")); drawWave(f, opWave); const s = opSamples(); drawDots(f, s, s.length <= 15); }
+  function updateChecks() { $("checkLeft").textContent = `점검 기회 ${S.send.checks}번`; $("selfCheck").disabled = S.send.checks <= 0; }
+  function hideCipher() { $("cipherBox").hidden = true; $("sendStatus").hidden = true; S.send.cipher = ""; }
+  $("selfCheck").addEventListener("click", () => {
+    if (S.send.checks <= 0) return;
+    const s = opSamples(); let right = 0, total = s.length * 2;
+    s.forEach((p, i) => {
+      const qi = $("sq" + i), bi = $("sb" + i); qi.classList.remove("ok", "bad"); bi.classList.remove("ok", "bad");
+      const cq = quant3(p.v);
+      if (S.send.q[i] !== undefined) { if (S.send.q[i] === cq) { qi.classList.add("ok"); right++; } else qi.classList.add("bad"); }
+      if (S.send.b[i]) { if (S.send.b[i] === toBin(cq)) { bi.classList.add("ok"); right++; } else bi.classList.add("bad"); }
+    });
+    S.send.checks--; updateChecks();
+    const st = $("sendStatus"); st.hidden = false;
+    st.className = right === total ? "status ok" : "status warn";
+    st.textContent = right === total ? "완벽해요! 암호문을 만들어 보내세요." : `${total}칸 중 ${right}칸 통과. 빨간 칸을 다시 보세요.`;
+  });
+  $("makeCipher").addEventListener("click", () => {
+    const s = opSamples(); const st = $("sendStatus"); st.hidden = false;
+    const missing = s.filter((_, i) => !S.send.b[i] || S.send.b[i].length !== 3).length;
+    if (missing) { st.className = "status bad"; st.textContent = `이진수 ${missing}칸이 아직 3자리가 아니에요.`; return; }
+    S.send.cipher = s.map((_, i) => S.send.b[i]).join(" ");
+    S.log.sent = { op: S.op, interval: S.interval, cipher: S.send.cipher };
+    st.hidden = true;
+    $("cipherMeta").textContent = `작전 번호 ${S.op} · 간격 ${S.interval}초 · 3비트 × ${s.length}개 = ${s.length * 3}비트`;
+    $("cipherBits").innerHTML = S.send.cipher.split(" ").map((g) => `<span>${g}</span>`).join("");
+    $("cipherBox").hidden = false; updateSummary();
+  });
+
+  // ================= STAGE 1: RECEIVER =================
+  function parseRaw() {
+    const bits = (S.recv.raw || "").replace(/[^01]/g, "");
+    const groups = []; for (let i = 0; i + 3 <= bits.length; i += 3) groups.push(bits.slice(i, i + 3));
+    return { bits, groups, rest: bits.length % 3 };
+  }
+  function buildReceiver() {
+    const { bits, groups, rest } = parseRaw(), need = opSamples().length * 3, st = $("rawStatus");
+    if (!bits.length) { st.className = "status info"; st.textContent = `이번 작전은 ${need}비트(3비트 × ${need / 3}개)가 와야 해요.`; }
+    else if (bits.length === need) { st.className = "status ok"; st.textContent = `${bits.length}비트 수신 완료 · 3자리씩 ${groups.length}개`; }
+    else { st.className = "status warn"; st.textContent = `${bits.length}비트 받음 · ${need}비트가 와야 해요. ${bits.length < need ? "빠진" : "남는"} 비트가 있어요. 짝에게 다시 확인하세요.`; }
+    if (rest && bits.length !== need) st.textContent += ` (끝에 ${rest}자리가 남음)`;
+    const s = opSamples();
+    const cols = s.map((p, i) => ({ t: p.t, g: groups[i] }));
+    $("tRecv").innerHTML =
+      "<tr><th>시간(초)</th>" + cols.map((c) => `<td class="cell">${fmtT(c.t)}</td>`).join("") + "</tr>" +
+      "<tr><th>받은 3비트</th>" + cols.map((c) => `<td class="cell" style="font-weight:600">${c.g ?? "—"}</td>`).join("") + "</tr>" +
+      "<tr><th>해독한 정수</th>" + cols.map((c, i) => `<td><input id="rd${i}" type="number" min="0" max="7" inputmode="numeric" aria-label="${fmtT(c.t)}초 해독한 정수" value="${S.recv.dec[i] ?? ""}" ${c.g ? "" : "disabled"}></td>`).join("") + "</tr>" +
+      `<tr id="diagRow" ${S.recv.revealed ? "" : "hidden"}><th>진단</th>` + cols.map((_, i) => `<td id="dg${i}"></td>`).join("") + "</tr>";
+    cols.forEach((_, i) => $("rd" + i).addEventListener("input", (e) => {
+      const v = parseInt(e.target.value, 10); S.recv.dec[i] = Number.isNaN(v) ? undefined : Math.max(0, Math.min(7, v));
+      e.target.classList.remove("ok", "bad"); if (S.recv.revealed) unreveal(); renderReceiver();
+    }));
+    if (S.recv.revealed) diagnose();
+  }
+  function renderReceiver() {
+    const s = opSamples(), f = frame($("cRecv"));
+    if (S.recv.revealed) { drawWave(f, opWave, .85); }
+    drawStair(f, s.map((p, i) => ({ t: p.t, v: S.recv.dec[i] })), tok("--digital"));
+    $("legendOrig").hidden = !S.recv.revealed;
+  }
+  $("rawIn").addEventListener("input", (e) => { S.recv.raw = e.target.value; if (S.recv.revealed) unreveal(); buildReceiver(); renderReceiver(); });
+  $("codeTable").innerHTML = [0,1,2,3,4,5,6,7].map((n) => `<div>${toBin(n)}<b>${n}</b></div>`).join("");
+  $("toggleTable").addEventListener("click", (e) => { const t = $("codeTable"); t.hidden = !t.hidden; e.currentTarget.setAttribute("aria-expanded", String(!t.hidden)); e.currentTarget.textContent = t.hidden ? "변환표 보기" : "변환표 숨기기"; });
+  $("checkDecode").addEventListener("click", () => {
+    const { groups } = parseRaw(); let right = 0, n = 0;
+    groups.slice(0, opSamples().length).forEach((g, i) => { const inp = $("rd" + i); if (!inp) return; inp.classList.remove("ok", "bad"); if (S.recv.dec[i] === undefined) return; n++; if (S.recv.dec[i] === parseInt(g, 2)) { right++; inp.classList.add("ok"); } else inp.classList.add("bad"); });
+    const st = $("recvStatus"); st.hidden = false;
+    if (!n) { st.className = "status bad"; st.textContent = "먼저 3비트를 정수로 해독해 적어 주세요."; return; }
+    st.className = right === n ? "status ok" : "status warn";
+    st.textContent = right === n ? `해독 ${n}개 모두 정확! 이제 원본을 공개해 보세요.` : `해독 ${n}개 중 ${right}개 정확. 4·2·1 자리값을 다시 계산해 보세요.`;
+  });
+  function unreveal() { S.recv.revealed = false; $("scoreBox").hidden = true; const r = $("diagRow"); if (r) r.hidden = true; }
+  function diagnose() {
+    const s = opSamples(), { groups } = parseRaw(); let match = 0, decodeErr = 0, sendErr = 0, blank = 0;
+    s.forEach((p, i) => {
+      const cell = $("dg" + i); if (!cell) return; const truth = quant3(p.v), g = groups[i], d = S.recv.dec[i];
+      let cls = "ok", txt = "✓ 일치";
+      if (g === undefined || d === undefined) { cls = "warn"; txt = "빈칸"; blank++; }
+      else if (d !== parseInt(g, 2)) { cls = "bad"; txt = "해독 실수"; decodeErr++; }
+      else if (d !== truth) { cls = "warn"; txt = "보낸 값 다름"; sendErr++; }
+      else match++;
+      cell.innerHTML = `<span class="diag ${cls}">${txt}</span>`;
+    });
+    $("diagRow").hidden = false;
+    const rate = Math.round((match / s.length) * 100);
+    const stars = rate === 100 ? 3 : rate >= 75 ? 2 : rate >= 50 ? 1 : 0;
+    S.recv.rate = rate; S.recv.stars = stars;
+    S.log.recv = { op: S.op, interval: S.interval, rate, stars, decodeErr, sendErr, blank };
+    $("stars").textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
+    $("rate").textContent = `복원률 ${rate}%`;
+    let msg;
+    if (rate === 100) msg = "작전 성공! 보낸 쪽과 받은 쪽이 같은 약속(3비트 코드)을 지켜서 소리가 그대로 되살아났어요.";
+    else {
+      const parts = [];
+      if (decodeErr) parts.push(`해독 실수 ${decodeErr}곳 · 3비트를 정수로 바꾸다 틀렸어요`);
+      if (sendErr) parts.push(`보낸 값이 다른 곳 ${sendErr}곳 · 보내는 쪽 양자화·부호화나 쪽지·말로 옮기는 중에 달라졌어요`);
+      if (blank) parts.push(`빈칸 ${blank}곳`);
+      msg = parts.join(" / ") + ". 짝과 함께 어디서 달라졌는지 찾아보세요.";
+    }
+    $("scoreMsg").textContent = msg; $("scoreBox").hidden = false;
+  }
+  $("reveal").addEventListener("click", () => {
+    const st = $("recvStatus");
+    if (!parseRaw().groups.length) { st.hidden = false; st.className = "status bad"; st.textContent = "받은 암호문을 먼저 입력하세요."; return; }
+    S.recv.revealed = true; diagnose(); renderReceiver(); updateSummary();
+  });
+
+  // ================= STAGE 1: controls =================
+  seg($("roleSeg"), [["send", "보내는 요원"], ["recv", "받는 요원"]], () => S.role, (v) => { S.role = v; $("sender").hidden = v !== "send"; $("receiver").hidden = v !== "recv"; requestAnimationFrame(renderVisible); });
+  seg($("intSeg"), [["1", "1초 (기본)"], ["0.5", "0.5초 (고수)"]], () => S.interval, (v) => { S.interval = parseFloat(v); resetOp(); });
+  function resetOp() {
+    S.send = { q: [], b: [], checks: 2, cipher: "" }; S.recv.dec = []; S.recv.revealed = false; S.recv.rate = null;
+    hideCipher(); $("recvStatus").hidden = true; $("scoreBox").hidden = true;
+    buildSender(); buildReceiver(); updateSummary(); renderVisible();
+  }
+  $("op").addEventListener("change", (e) => { let n = parseInt(e.target.value, 10); n = Math.max(1, Math.min(99, n || 1)); e.target.value = n; S.op = n; opWave = makeWave(n * 7 + 3); resetOp(); });
+
+  // ================= STAGE 2 · 고수 도전 (용량 제한) =================
+  const BUDGETS = [[16, "16비트"], [24, "24비트"], [45, "45비트"]];
+  const scoreOf = (err) => Math.max(0, Math.round(100 * (1 - err / 4)));
+  function labCalc(interval, bits) {
+    const s = samplesOf(labWave, interval), L = Math.pow(2, bits), step = Y_MAX / (L - 1);
+    const q = s.map((p) => ({ t: p.t, v: Math.round(labWave(p.t) / step) * step }));
+    let err = 0; const N = 700;
+    for (let i = 0; i < N; i++) { const t = (i / (N - 1)) * T_MAX; let k = 0; while (k < q.length - 1 && q[k + 1].t <= t) k++; err += Math.abs(labWave(t) - q[k].v); }
+    err /= N;
+    return { s, q, L, size: s.length * bits, err, score: scoreOf(err) };
+  }
+  function renderLab() {
+    if (!$("expert").open) return;
+    const r = labCalc(S.lab.interval, S.lab.bits), over = r.size > S.lab.budget;
+    const levels = r.L <= 16 ? Array.from({ length: r.L }, (_, i) => i * (Y_MAX / (r.L - 1))) : null;
+    const f = frame($("cLab"), levels); drawWave(f, labWave, .9); drawStair(f, r.q, over ? tok("--bad") : tok("--digital"));
+    $("stN").textContent = r.s.length; $("stL").textContent = r.L;
+    $("stSize").textContent = `${r.s.length} × ${S.lab.bits} = ${r.size} / ${S.lab.budget}비트`;
+    $("meter").classList.toggle("over", over); $("meterFill").style.width = Math.min(100, (r.size / S.lab.budget) * 100) + "%";
+    $("stScore").textContent = over ? "예산 초과" : r.score + "점";
+    $("stScore").style.color = over ? "var(--bad)" : "var(--ink)";
+    if (!over) { const b = S.lab.best[S.lab.budget]; if (!b || r.score > b.score) S.lab.best[S.lab.budget] = { score: r.score, interval: S.lab.interval, bits: S.lab.bits }; }
+    renderRecords(); updateSummary();
+  }
+  function renderRecords() {
+    $("records").innerHTML = BUDGETS.map(([b, label]) => { const r = S.lab.best[b]; return `<div class="rec">${label} 채널<b>${r ? r.score + "점" : "—"}</b>${r ? `${r.interval}초 · ${r.bits}비트` : "아직 도전 전"}</div>`; }).join("");
+  }
+  seg($("budgetSeg"), BUDGETS, () => S.lab.budget, (v) => { S.lab.budget = parseInt(v, 10); $("bestText").hidden = true; renderLab(); });
+  seg($("labInt"), [["0.25", "0.25초"], ["0.5", "0.5초"], ["1", "1초"], ["2", "2초"]], () => S.lab.interval, (v) => { S.lab.interval = parseFloat(v); renderLab(); });
+  seg($("labBits"), [["1", "1비트"], ["2", "2비트"], ["3", "3비트"], ["4", "4비트"]], () => S.lab.bits, (v) => { S.lab.bits = parseInt(v, 10); renderLab(); });
+  $("expert").addEventListener("toggle", () => requestAnimationFrame(renderLab));
+  $("showBest").addEventListener("click", () => {
+    let best = null;
+    [0.25, 0.5, 1, 2].forEach((iv) => [1, 2, 3, 4].forEach((b) => { const r = labCalc(iv, b); if (r.size <= S.lab.budget && (!best || r.score > best.score)) best = { iv, b, score: r.score, size: r.size }; }));
+    const t = $("bestText"); t.hidden = false;
+    t.textContent = best ? `${S.lab.budget}비트 채널 최고 조합 · ${best.iv}초 × ${best.b}비트 = ${best.size}비트, ${best.score}점` : "가능한 조합이 없어요.";
+  });
+
+  // ================= STAGE 2 · 눈으로 맞히기 =================
+  const ROUNDS = [
+    { a: [2, 2], b: [0.5, 3], swap: false, lesson: "촘촘하게 자주 재고, 크기도 섬세하게 나눈 쪽이 원래 소리에 가까워요." },
+    { a: [1, 3], b: [1, 1], swap: true,  lesson: "간격은 같고 비트 수만 달라요. 비트가 많을수록 크기를 섬세하게 표현해요." },
+    { a: [2, 3], b: [0.5, 3], swap: false, lesson: "비트 수는 같고 간격만 달라요. 자주 잴수록(간격이 좁을수록) 모양을 잘 따라가요." },
+    { a: [0.25, 1], b: [1, 3], swap: false, lesson: "반전! A가 데이터를 더 썼는데도 엉망이에요. 아무리 자주 재도 크기를 2단계(1비트)로만 나누면 소용없어요." },
+    { a: [0.5, 2], b: [0.25, 4], swap: true, lesson: "원래 소리와 거의 겹치는 쪽은 데이터를 네 배 가까이 썼어요. 정확할수록 용량이 커져요." },
+  ];
+  S.quiz = { round: 0, picked: null, correct: 0, done: false, concl: [] };
+  function roundData(i) {
+    const R = ROUNDS[i]; const left = R.swap ? R.b : R.a, right = R.swap ? R.a : R.b;
+    const A = labCalc(left[0], left[1]), B = labCalc(right[0], right[1]);
+    return { A: { ...A, iv: left[0], bits: left[1] }, B: { ...B, iv: right[0], bits: right[1] }, answer: A.err < B.err ? "A" : "B", lesson: R.lesson };
+  }
+  function drawMini(cv, d) {
+    const levels = d.L <= 16 ? Array.from({ length: d.L }, (_, i) => i * (Y_MAX / (d.L - 1))) : null;
+    const f = frame(cv, levels); drawWave(f, labWave, .9); drawStair(f, d.q, tok("--digital"));
+  }
+  function renderQuiz() {
+    const Q = S.quiz;
+    $("quizArea").hidden = Q.done; $("conclusion").hidden = !Q.done;
+    $("quizProg").textContent = Q.done ? `완료 · ${Q.correct}/5` : `라운드 ${Q.round + 1} / 5 · 맞힌 수 ${Q.correct}`;
+    if (Q.done) { renderConclusion(); return; }
+    const d = roundData(Q.round);
+    drawMini($("cA"), d.A); drawMini($("cB"), d.B);
+    const info = (x) => `${x.iv}초 간격 · ${x.bits}비트<br><b>${x.s.length}개 × ${x.bits}비트 = ${x.size}비트</b>`;
+    ["A", "B"].forEach((k) => {
+      const card = $("pick" + k); card.classList.remove("right", "wrong", "chosen"); card.disabled = Q.picked !== null;
+      $("info" + k).innerHTML = Q.picked === null ? "어느 쪽이 더 닮았을까?" : info(d[k]);
+      if (Q.picked !== null) { if (k === d.answer) card.classList.add("right"); if (k === Q.picked) card.classList.add("chosen"); if (k === Q.picked && k !== d.answer) card.classList.add("wrong"); }
+    });
+    const fb = $("quizFeedback");
+    if (Q.picked === null) { fb.hidden = true; $("nextRound").hidden = true; }
+    else { fb.hidden = false; const ok = Q.picked === d.answer; fb.className = ok ? "status ok" : "status bad"; fb.textContent = (ok ? "정답! " : `아쉬워요. 정답은 ${d.answer}. `) + d.lesson; $("nextRound").hidden = false; $("nextRound").textContent = Q.round === 4 ? "결과 보기 →" : "다음 라운드 →"; }
+  }
+  ["A", "B"].forEach((k) => $("pick" + k).addEventListener("click", () => {
+    const Q = S.quiz; if (Q.picked !== null || Q.done) return;
+    Q.picked = k; if (k === roundData(Q.round).answer) Q.correct++; renderQuiz(); updateSummary();
+  }));
+  $("nextRound").addEventListener("click", () => { const Q = S.quiz; if (Q.round === 4) Q.done = true; else Q.round++; Q.picked = null; renderQuiz(); updateSummary(); });
+  $("restartQuiz").addEventListener("click", () => { S.quiz = { round: 0, picked: null, correct: 0, done: false, concl: [] }; S.conclOk = null; renderQuiz(); updateSummary(); });
+
+  const CONCL = [
+    { q: "비트 수가 같을 때, 간격을 좁히면(자주 재면) 원래 소리에", opts: ["가까워진다", "멀어진다"], ans: 0 },
+    { q: "간격이 같을 때, 비트 수를 늘리면 원래 소리에", opts: ["가까워진다", "멀어진다"], ans: 0 },
+    { q: "그 대신 데이터 크기(비트 수)는", opts: ["커진다", "작아진다"], ans: 0 },
+  ];
+  function renderConclusion() {
+    const Q = S.quiz;
+    $("quizStars").textContent = "★".repeat(Q.correct >= 5 ? 3 : Q.correct >= 4 ? 2 : Q.correct >= 3 ? 1 : 0).padEnd(3, "☆");
+    $("quizScore").textContent = `${Q.correct} / 5 라운드 정답`;
+    $("conclQs").innerHTML = CONCL.map((c, i) => `<div class="concl-row"><span>${i + 1}. ${c.q}</span><div class="seg" role="group" aria-label="${c.q}">${c.opts.map((o, j) => `<button type="button" data-q="${i}" data-o="${j}" aria-pressed="${Q.concl[i] === j}">${o}</button>`).join("")}</div></div>`).join("");
+  }
+  $("conclQs").addEventListener("click", (e) => { const b = e.target.closest("button[data-q]"); if (!b) return; S.quiz.concl[+b.dataset.q] = +b.dataset.o; $("conclStatus").hidden = true; renderConclusion(); });
+  $("checkConcl").addEventListener("click", () => {
+    const Q = S.quiz, st = $("conclStatus"); st.hidden = false;
+    if (CONCL.some((_, i) => Q.concl[i] === undefined)) { st.className = "status bad"; st.textContent = "세 문장을 모두 골라 주세요."; return; }
+    const right = CONCL.filter((c, i) => Q.concl[i] === c.ans).length; S.conclOk = right === 3;
+    st.className = S.conclOk ? "status ok" : "status warn";
+    st.textContent = S.conclOk ? "정확해요! 이미지 해상도, 동영상 FPS도 같은 원리예요." : `세 문장 중 ${right}개 맞았어요. 라운드 설명을 떠올려 보세요.`;
+    updateSummary();
+  });
+
+  // ---------- audio (teacher screen) ----------
+  let actx = null; const SR = 44100, DUR = 1.6;
+  const toneAt = (t) => Math.min(1, t / 0.05) * Math.min(1, (DUR - t) / 0.15) * (0.45 * Math.sin(6.283 * 262 * t) + 0.3 * Math.sin(6.283 * 330 * t) + 0.2 * Math.sin(6.283 * 392 * t) + 0.08 * Math.sin(6.283 * 523 * t));
+  function play(processed) {
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume();
+      const buf = actx.createBuffer(1, Math.floor(SR * DUR), SR), d = buf.getChannelData(0);
+      const rate = { 0.25: 16000, 0.5: 8000, 1: 4000, 2: 2000 }[S.lab.interval], hold = processed ? Math.max(1, Math.round(SR / rate)) : 1, L = Math.pow(2, S.lab.bits);
+      let held = 0;
+      for (let i = 0; i < d.length; i++) { if (i % hold === 0) { let v = toneAt(i / SR); if (processed) { const x = (v + 1) / 2; v = (Math.round(x * (L - 1)) / (L - 1)) * 2 - 1; } held = v; } d[i] = held * 0.5; }
+      const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination); src.start();
+    } catch (e) {}
+  }
+  $("playA").addEventListener("click", () => play(false));
+  $("playB").addEventListener("click", () => play(true));
+
+  // ================= STAGE 3: 결과 카드 =================
+  function summaryData() {
+    const Q = S.quiz, bestTxt = BUDGETS.filter(([b]) => S.lab.best[b]).map(([b]) => `${b}비트 ${S.lab.best[b].score}점`).join(", ");
+    const L = S.log, snt = L.sent, rcv = L.recv;
+    const recvDiag = rcv ? (rcv.rate === 100 ? "모든 칸 일치" : [rcv.decodeErr && `해독 실수 ${rcv.decodeErr}곳`, rcv.sendErr && `보낸 값 다름 ${rcv.sendErr}곳`, rcv.blank && `빈칸 ${rcv.blank}곳`].filter(Boolean).join(" · ")) : "";
+    return {
+      who: [($("stuNo").value || "").trim(), ($("stuName").value || "").trim()].filter(Boolean).join(" ") || "학번 · 이름",
+      sentOp: snt ? `작전 ${snt.op}번 · ${snt.interval}초` : "",
+      sent: snt ? snt.cipher : "아직 보내지 않음",
+      recvOp: rcv ? `작전 ${rcv.op}번 · ${rcv.interval}초` : "",
+      recv: rcv ? `복원률 ${rcv.rate}% ${"★".repeat(rcv.stars)}${"☆".repeat(3 - rcv.stars)}` : "아직 받지 않음",
+      recvDiag,
+      roles: `보내기 ${snt ? "✓" : "—"} · 받기 ${rcv ? "✓" : "—"}`,
+      quiz: Q.done ? `${Q.correct} / 5 정답` : `진행 중 (${Q.correct}개 정답)`,
+      rule: S.conclOk === true ? "3문장 모두 정확 ✓" : S.conclOk === false ? "다시 확인 필요" : "아직 확인 전",
+      expert: bestTxt || "도전 안 함",
+      note: ($("stuNote").value || "").trim(),
+    };
+  }
+  function updateSummary() {
+    const d = summaryData();
+    $("rcWho").textContent = d.who; $("rcOp").textContent = d.roles; $("rcSent").textContent = (d.sentOp ? d.sentOp + " · " : "") + d.sent; $("rcRecv").textContent = (d.recvOp ? d.recvOp + " · " : "") + d.recv + (d.recvDiag ? " (" + d.recvDiag + ")" : "");
+    $("rcQuiz").textContent = d.quiz; $("rcRule").textContent = d.rule; $("rcExpert").textContent = d.expert;
+    $("rcNote").textContent = d.note ? "“" + d.note + "”" : "한 줄 소감을 적어 주세요";
+    $("rcNote").classList.toggle("empty", !d.note);
+    scheduleCardImage();
+  }
+  ["stuNo", "stuName", "stuNote"].forEach((id) => $(id).addEventListener("input", updateSummary));
+
+  // ---------- 결과 카드 → 그림 ----------
+  // 제출용 그림은 화면 테마와 상관없이 항상 밝은 색으로 그린다.
+  const CARD = { bg: "#FFFFFF", cell: "#ECF0ED", ink: "#16201C", muted: "#58675F", line: "#D3DBD6", head: "#B8471E", accent: "#2C4C8E" };
+  const F_SANS = '"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  const F_DISP = '"Black Han Sans", ' + F_SANS;
+  const F_MONO = '"IBM Plex Mono", ui-monospace, Consolas, monospace';
+  function wrapText(ctx, text, maxW) {
+    const lines = []; let line = "";
+    const pushWord = (w) => {
+      const tryLine = line ? line + " " + w : w;
+      if (ctx.measureText(tryLine).width <= maxW) { line = tryLine; return; }
+      if (line) { lines.push(line); line = ""; }
+      if (ctx.measureText(w).width <= maxW) { line = w; return; }
+      for (const ch of w) { if (ctx.measureText(line + ch).width > maxW && line) { lines.push(line); line = ch; } else line += ch; }
+    };
+    String(text).split("\n").forEach((para) => { para.split(" ").forEach(pushWord); if (line) { lines.push(line); line = ""; } });
+    if (line) lines.push(line);
+    return lines.length ? lines : [""];
+  }
+  function drawCard() {
+    const d = summaryData(), W = 1080, P = 40, GAP = 16, SCALE = 2;
+    const colW = (W - P * 2 - GAP) / 2, inner = colW - 36;
+    const cells = [
+      ["① 보내는 요원 · 보낸 암호문" + (d.sentOp ? "  |  " + d.sentOp : ""), d.sent, !!S.log.sent],
+      ["② 받는 요원 · 되살린 결과" + (d.recvOp ? "  |  " + d.recvOp : ""), d.recv + (d.recvDiag ? "\n" + d.recvDiag : ""), false],
+      ["작전 2 · 눈으로 맞히기", d.quiz, false], ["알아낸 규칙", d.rule, false],
+      ["고수 도전", d.expert, false], ["작전 1 · 역할 완수", d.roles, false],
+    ];
+    const m = document.createElement("canvas").getContext("2d");
+    const valFont = (mono) => (mono ? `600 22px ${F_MONO}` : `700 26px ${F_SANS}`);
+    const wrapped = cells.map(([, v, mono]) => { m.font = valFont(mono); return wrapText(m, v, inner); });
+    const cellH = (i) => 28 + 18 + wrapped[i].length * 36 + 16;
+    const rowH = [0, 1, 2].map((r) => Math.max(cellH(r * 2), cellH(r * 2 + 1)));
+    m.font = `500 26px ${F_SANS}`;
+    const noteLines = wrapText(m, d.note ? "“" + d.note + "”" : "한 줄 소감을 적어 주세요", W - P * 2 - 36);
+    const HEAD = 104, noteH = 28 + 18 + noteLines.length * 38 + 16;
+    const H = HEAD + P + rowH.reduce((a, b) => a + b, 0) + GAP * 3 + noteH + 64;
+
+    const cv = document.createElement("canvas"); cv.width = W * SCALE; cv.height = H * SCALE;
+    const c = cv.getContext("2d"); c.scale(SCALE, SCALE); c.textBaseline = "top";
+    const rr = (x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+    c.fillStyle = CARD.bg; c.fillRect(0, 0, W, H);
+    // 머리띠
+    c.fillStyle = CARD.head; c.fillRect(0, 0, W, HEAD);
+    c.fillStyle = "#FFFFFF"; c.font = `400 40px ${F_DISP}`; c.fillText("소리 암호 작전 · 결과 카드", P, 30);
+    c.textAlign = "right"; c.font = `700 30px ${F_SANS}`; c.fillText(d.who, W - P, 36); c.textAlign = "left";
+    // 칸
+    let y = HEAD + P;
+    for (let r = 0; r < 3; r++) {
+      for (let k = 0; k < 2; k++) {
+        const i = r * 2 + k, x = P + k * (colW + GAP);
+        c.fillStyle = CARD.cell; rr(x, y, colW, rowH[r], 12); c.fill();
+        c.fillStyle = CARD.muted; c.font = `500 19px ${F_SANS}`; c.fillText(cells[i][0], x + 18, y + 18);
+        c.fillStyle = i === 0 ? CARD.accent : CARD.ink; c.font = valFont(cells[i][2]);
+        wrapped[i].forEach((ln, j) => c.fillText(ln, x + 18, y + 18 + 28 + 10 + j * 36));
+      }
+      y += rowH[r] + GAP;
+    }
+    // 소감
+    c.strokeStyle = CARD.line; c.lineWidth = 2; rr(P, y, W - P * 2, noteH, 12); c.stroke();
+    c.fillStyle = CARD.muted; c.font = `500 19px ${F_SANS}`; c.fillText("한 줄 소감 · 오늘 알게 된 것", P + 18, y + 18);
+    c.fillStyle = d.note ? CARD.ink : CARD.muted; c.font = `500 26px ${F_SANS}`;
+    noteLines.forEach((ln, j) => c.fillText(ln, P + 18, y + 18 + 28 + 10 + j * 38));
+    // 바닥글
+    const now = new Date(), date = `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}`;
+    c.fillStyle = CARD.muted; c.font = `400 18px ${F_SANS}`;
+    c.fillText("2.1.2 다양한 데이터의 디지털 표현 · 표본화 → 양자화 → 부호화", P, H - 44);
+    c.textAlign = "right"; c.fillText(date, W - P, H - 44); c.textAlign = "left";
+    return cv;
+  }
+  const cardBlob = () => new Promise((res, rej) => { try { drawCard().toBlob((b) => (b ? res(b) : rej(new Error("toBlob"))), "image/png"); } catch (e) { rej(e); } });
+  let cardTimer = null;
+  function scheduleCardImage() {
+    clearTimeout(cardTimer);
+    cardTimer = setTimeout(() => { try { $("cardImg").src = drawCard().toDataURL("image/png"); } catch (e) {} }, 120);
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleCardImage);
+  const cardFileName = () => { const d = summaryData(); const who = d.who === "학번 · 이름" ? "" : "_" + d.who.replace(/[^\p{L}\p{N}]+/gu, "_"); return `소리암호작전${who}.png`; };
+  function imgMsg(text, kind) { const s = $("imgStatus"); s.className = "status " + (kind || "ok"); s.textContent = text; s.hidden = false; clearTimeout(imgMsg.t); imgMsg.t = setTimeout(() => (s.hidden = true), 4000); }
+
+  $("imgCopyBtn").addEventListener("click", () => {
+    const failed = () => imgMsg("이 화면에서는 버튼 복사가 막혀 있어요. 아래 그림 위에서 오른쪽 클릭 → 이미지 복사를 해 주세요.", "warn");
+    try {
+      if (!navigator.clipboard || !window.ClipboardItem) { failed(); return; }
+      // 클릭 직후에 바로 clipboard.write를 불러야 브라우저가 허용하므로, 그림은 Promise로 넘긴다.
+      navigator.clipboard.write([new ClipboardItem({ "image/png": cardBlob() })])
+        .then(() => imgMsg("이미지를 복사했어요. 통합학습창 입력칸에서 Ctrl+V 하세요."), failed);
+    } catch (e) { failed(); }
+  });
+
+const __dl = (blob, name) => { const no = (String(name).match(/\d{3,6}/) || [""])[0]; name = "sound-card" + (no ? "-" + no : "") + ".png"; const u = URL.createObjectURL(blob), a = document.createElement("a"); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); };
+  let downloads = null;
+  $("imgSaveBtn").addEventListener("click", async () => {
+    let blob;
+    try { blob = await cardBlob(); } catch (e) { imgMsg("그림을 만들지 못했어요. 아래 그림을 오른쪽 클릭해서 저장해 주세요.", "warn"); return; }
+    const name = cardFileName();
+    if (downloads) {
+      try { await downloads.save({ filename: name, data: blob }); imgMsg("저장했어요. 통합학습창에서 파일 올리기로 올리세요."); return; }
+      catch (e) { if (e && e.code === "declined") { imgMsg("저장을 취소했어요.", "info"); return; } if (e && e.code === "rate_limited") { imgMsg("저장 창이 이미 열려 있어요.", "info"); return; } }
+    }
+    try { __dl(blob, name); imgMsg("다운로드 폴더에 저장했어요. 통합학습창에서 파일 올리기로 올리세요."); } catch (e) { imgMsg("저장하지 못했어요. 결과 카드 그림에서 오른쪽 클릭 → 이미지를 다른 이름으로 저장.", "warn"); }
+  });
+  $("copyBtn").addEventListener("click", () => {
+    const d = summaryData();
+    const text = `[소리 암호 작전] ${d.who}\n① 보낸 암호문${d.sentOp ? " (" + d.sentOp + ")" : ""}: ${d.sent}\n② 되살린 결과${d.recvOp ? " (" + d.recvOp + ")" : ""}: ${d.recv}${d.recvDiag ? " · " + d.recvDiag : ""}\n눈으로 맞히기: ${d.quiz} | 규칙: ${d.rule} | 고수 도전: ${d.expert}\n소감: ${d.note || "-"}`;
+    const done = () => { const c = $("copied"); c.textContent = "복사했어요"; c.hidden = false; setTimeout(() => (c.hidden = true), 1800); };
+    const fallback = () => { const ta = $("copyArea"); ta.hidden = false; ta.value = text; ta.focus(); ta.select(); const c = $("copied"); c.hidden = false; c.textContent = "선택된 글자를 복사하세요 (Ctrl+C)"; };
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+  });
+
+  // ---------- stages ----------
+  function showStage(n) { S.stage = n; [1, 2, 3].forEach((i) => { $("stage" + i).hidden = i !== n; $("tabS" + i).setAttribute("aria-selected", String(i === n)); }); if (n === 3) updateSummary(); requestAnimationFrame(renderVisible); }
+  document.querySelectorAll(".stage-tab").forEach((b) => b.addEventListener("click", () => showStage(+b.dataset.stage)));
+  function renderVisible() {
+    if (S.stage === 1) { S.role === "send" ? renderSender() : renderReceiver(); }
+    if (S.stage === 2) { renderQuiz(); renderLab(); }
+  }
+  window.addEventListener("resize", () => requestAnimationFrame(renderVisible));
+  if (window.matchMedia) { const mq = window.matchMedia("(prefers-color-scheme: dark)"); mq.addEventListener && mq.addEventListener("change", renderVisible); }
+  new MutationObserver(renderVisible).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  document.fonts && document.fonts.ready.then(renderVisible);
+
+  buildSender(); buildReceiver(); renderRecords(); updateSummary(); showStage(1);
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>그림 암호 작전</title>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #F1F3F6; --surface: #FFFFFF; --surface-2: #EAEEF3; --ink: #151B24; --muted: #566273;
+    --line: #D0D7E1; --grid: #C5CDD8;
+    --pixel: #2C4C8E; --trace: #0F7F7A; --mission: #B8471E; --miss: #C0720E;
+    --ok: #217A48; --ok-bg: #E0F1E6; --bad: #BA3B29; --bad-bg: #F8E3DE; --warn-bg: #FBF0DC; --warn: #8A5A0B;
+    --focus: #2C4C8E;
+    --display: "Black Han Sans", "IBM Plex Sans KR", "Apple SD Gothic Neo", sans-serif;
+    --sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0F131A; --surface: #171D26; --surface-2: #1E2631; --ink: #E3E8EF; --muted: #97A3B4;
+      --line: #2C3645; --grid: #3A4556; --pixel: #93ADEA; --trace: #43C4BB; --mission: #F08A5D; --miss: #F0A544;
+      --ok: #62CB90; --ok-bg: #15301F; --bad: #F2806D; --bad-bg: #37201B; --warn-bg: #33280F; --warn: #F1C271; --focus: #93ADEA;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0F131A; --surface: #171D26; --surface-2: #1E2631; --ink: #E3E8EF; --muted: #97A3B4;
+    --line: #2C3645; --grid: #3A4556; --pixel: #93ADEA; --trace: #43C4BB; --mission: #F08A5D; --miss: #F0A544;
+    --ok: #62CB90; --ok-bg: #15301F; --bad: #F2806D; --bad-bg: #37201B; --warn-bg: #33280F; --warn: #F1C271; --focus: #93ADEA;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; word-break: keep-all; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 26px 18px 64px; display: flex; flex-direction: column; gap: 18px; }
+  h1, h2, h3 { margin: 0; text-wrap: balance; }
+  button, input, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  header.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 14px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--muted); }
+  h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 42px); letter-spacing: -.01em; line-height: 1.15; }
+  h1 .tag { color: var(--pixel); }
+  .lead { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
+  .rule-chip { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 2px solid var(--ink); border-radius: 10px; padding: 8px 14px; font-size: 14px; }
+  .rule-chip b { font-family: var(--display); font-weight: 400; font-size: 16px; }
+  .sw { display: inline-block; width: 16px; height: 16px; border: 1px solid var(--muted); vertical-align: -3px; margin-right: 4px; }
+
+  .btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 13px; cursor: pointer; font-size: 14px; font-weight: 500; }
+  .btn:hover { border-color: var(--muted); }
+  .btn.primary { background: var(--pixel); border-color: var(--pixel); color: var(--surface); font-weight: 600; }
+  .btn.go { background: var(--mission); border-color: var(--mission); color: #fff; font-weight: 700; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  nav.stages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  @media (max-width: 600px) { nav.stages { grid-template-columns: 1fr; } }
+  .stage-tab { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 1px; }
+  .stage-tab .k { font-family: var(--mono); font-size: 11.5px; color: var(--muted); letter-spacing: .06em; }
+  .stage-tab .t { font-family: var(--display); font-size: 19px; line-height: 1.3; }
+  .stage-tab .d { font-size: 12.5px; color: var(--muted); }
+  .stage-tab[aria-selected="true"] { border: 2px solid var(--pixel); padding: 9px 13px; }
+  .stage-tab[aria-selected="true"] .k { color: var(--pixel); }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .head-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+  .head-row h2 { font-family: var(--display); font-weight: 400; font-size: 22px; }
+  .brief { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; background: var(--warn-bg); border-radius: 12px; padding: 12px 14px; }
+  .brief .stamp { font-family: var(--display); color: var(--mission); border: 2px solid var(--mission); border-radius: 6px; padding: 2px 8px; transform: rotate(-4deg); font-size: 15px; white-space: nowrap; }
+  .brief p { margin: 0; font-size: 14.5px; }
+  .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button { border: 0; background: var(--surface); padding: 7px 12px; cursor: pointer; font-size: 13.5px; border-right: 1px solid var(--line); }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] { background: var(--pixel); color: var(--surface); font-weight: 600; }
+  .lbl { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .status { font-size: 14px; font-weight: 500; padding: 6px 10px; border-radius: 8px; }
+  .status.ok { background: var(--ok-bg); color: var(--ok); }
+  .status.bad { background: var(--bad-bg); color: var(--bad); }
+  .status.info { background: var(--surface-2); color: var(--muted); }
+  .status.warn { background: var(--warn-bg); color: var(--warn); }
+  .hint { font-size: 13.5px; color: var(--muted); background: var(--surface-2); border-radius: 10px; padding: 10px 12px; margin: 0; }
+  .hint b { color: var(--ink); }
+  .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; cursor: pointer; }
+
+  /* 작전 1 */
+  .draw-grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .draw-grid { grid-template-columns: 1fr; } }
+  .pad { width: 100%; max-width: 380px; aspect-ratio: 1; display: block; touch-action: none; cursor: crosshair; border-radius: 6px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12.5px; color: var(--muted); }
+  .legend i { display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+  .codes { display: flex; flex-direction: column; gap: 6px; }
+  .code-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) 28px; gap: 8px; align-items: center; }
+  .code-row span.n { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; }
+  .code-row input { width: 100%; max-width: 260px; font-family: var(--mono); font-size: 17px; font-weight: 600; letter-spacing: .18em; padding: 5px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+  .code-row input.ok { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); }
+  .code-row input.bad { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); }
+  .code-row .mark { font-weight: 700; font-size: 15px; text-align: center; }
+  .code-row .mark.ok { color: var(--ok); } .code-row .mark.bad { color: var(--bad); }
+  .side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .decode { display: flex; gap: 14px; align-items: center; background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
+  .decode canvas { width: 112px; height: 112px; flex: none; border-radius: 4px; }
+  .decode p { margin: 0; font-size: 13.5px; color: var(--muted); }
+  .decode p b { color: var(--ink); }
+  .size { font-family: var(--mono); font-size: 14px; background: var(--surface-2); border-radius: 10px; padding: 8px 12px; font-variant-numeric: tabular-nums; }
+  .size b { font-size: 17px; }
+  details.expert { border: 1px dashed var(--line); border-radius: 12px; padding: 10px 14px; }
+  details.expert summary { cursor: pointer; font-weight: 600; }
+  .palette { display: flex; flex-wrap: wrap; gap: 6px; }
+  .palette button { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); padding: 4px 6px; cursor: pointer; min-width: 58px; }
+  .palette button i { width: 26px; height: 18px; border: 1px solid var(--muted); border-radius: 3px; }
+  .palette button span { font-size: 11.5px; }
+  .palette button code { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  .palette button[aria-pressed="true"] { border-color: var(--pixel); background: var(--surface-2); }
+
+  .kit { border: 2px solid var(--pixel); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .kit-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+  .kit-head h3 { font-family: var(--display); font-weight: 400; font-size: 19px; color: var(--pixel); }
+  .kit-head span { font-size: 13.5px; color: var(--muted); }
+  .kit-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 560px) { .kit-grid { grid-template-columns: 1fr; } }
+  .kit-tile { background: var(--surface-2); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+  .kit-tile .t { font-size: 13px; font-weight: 600; text-align: center; }
+  .kit-tile img { width: 100%; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 6px; background: #fff; display: block; }
+  .kit-tile .btn { width: 100%; }
+
+  /* 작전 2 */
+  .lab { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; align-items: start; }
+  @media (max-width: 820px) { .lab { grid-template-columns: 1fr; } }
+  .stage-view { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .view { width: 100%; display: block; border-radius: 10px; background: var(--surface-2); image-rendering: pixelated; }
+  .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 13.5px; color: var(--muted); }
+  .drop.over { border-color: var(--pixel); background: var(--surface-2); }
+  .drop label.btn { color: var(--ink); }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+  .stat span { display: block; font-size: 12px; color: var(--muted); }
+  .stat > b { font-family: var(--mono); font-size: 18px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .stat.full { grid-column: 1 / -1; }
+  .meter { height: 10px; border-radius: 6px; background: var(--line); overflow: hidden; margin-top: 6px; }
+  .meter > div { height: 100%; background: var(--pixel); border-radius: 6px; transition: width .2s; }
+  .recs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .recs { grid-template-columns: 1fr; } }
+  .rec { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+  .rec h3 { font-size: 14px; }
+  .rec canvas { width: 100%; height: auto; border-radius: 6px; background: var(--surface-2); image-rendering: pixelated; }
+  .rec .empty { color: var(--muted); background: var(--surface-2); border-radius: 8px; padding: 18px 10px; text-align: center; }
+  .rec b { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .proscons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 560px) { .proscons { grid-template-columns: 1fr; } }
+  input.txt { font-family: var(--sans); font-size: 15px; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; background: var(--surface); width: 100%; }
+
+  /* 작전 보고 */
+  .card-img { margin: 0; display: flex; flex-direction: column; gap: 8px; max-width: 760px; }
+  .card-img figcaption { font-size: 13px; color: var(--muted); }
+  .card-img figcaption b { color: var(--ink); }
+  .card-img img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .submit-guide { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; }
+  @media (max-width: 640px) { .submit-guide { grid-template-columns: 1fr; } }
+  .submit-guide > div { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .steps { margin: 0; padding-left: 20px; font-size: 13px; color: var(--muted); }
+  .steps b { color: var(--ink); }
+  kbd { font-family: var(--mono); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--surface); }
+  #copyArea { width: 100%; font-family: var(--mono); font-size: 12px; min-height: 120px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--surface-2); }
+  .questions { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; }
+  .mb { border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  details.teacher { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 18px; }
+  details.teacher summary { cursor: pointer; font-weight: 600; }
+  details.teacher ol { margin: 10px 0 4px; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">중학교 정보 · II-1-② 다양한 데이터의 디지털 표현 · 이미지</div>
+      <h1>그림 암호 <span class="tag">작전</span></h1>
+      <p class="lead">그림을 작은 칸(픽셀)으로 나누고, 칸마다 색을 0과 1로 적어 봅니다. 이어서 진짜 사진의 해상도와 색 수를 바꿔 보며 화질과 용량을 비교합니다.</p>
+    </div>
+    <div class="rule-chip" aria-label="교과서 약속">
+      <b>약속</b>
+      <span><i class="sw" style="background:#111"></i>검은색 = <b>0</b></span>
+      <span><i class="sw" style="background:#fff"></i>흰색 = <b>1</b></span>
+    </div>
+  </header>
+
+  <nav class="stages" role="tablist" aria-label="작전">
+    <button class="stage-tab" role="tab" data-stage="1" id="tabS1"><span class="k">작전 1 · 해 보기 1</span><span class="t">그림을 0과 1로</span><span class="d">픽셀로 나누기 · 이진수로 적기</span></button>
+    <button class="stage-tab" role="tab" data-stage="2" id="tabS2"><span class="k">작전 2 · 해 보기 2</span><span class="t">해상도 실험실</span><span class="d">내가 찾은 사진으로 화질과 용량 비교</span></button>
+    <button class="stage-tab" role="tab" data-stage="3" id="tabS3"><span class="k">작전 보고</span><span class="t">결과 정리</span><span class="d">결과 카드 · 통합학습창 제출</span></button>
+  </nav>
+
+  <!-- ================= STAGE 1 ================= -->
+  <section class="panel" id="stage1" role="tabpanel" aria-labelledby="tabS1">
+    <div class="head-row">
+      <h2>작전 1 · 그림을 0과 1로</h2>
+      <div class="row">
+        <div><span class="lbl">격자 크기</span><div class="seg" id="sizeSeg"></div></div>
+        <div><span class="lbl">밑그림</span><div class="seg" id="tplSeg"></div></div>
+      </div>
+    </div>
+    <div class="brief"><span class="stamp">임무</span><p>① 밑그림의 <b>선이 지나간 칸</b>을 눌러 검게 칠한다. <span style="color:var(--muted)">(모서리만 살짝 스친 칸은 자유)</span> ② 오른쪽에 한 줄씩 <b>검은 칸은 0, 흰 칸은 1</b>로 적는다. ③ 내가 적은 0과 1로 그림이 제대로 되살아나는지 확인한다.</p></div>
+
+    <div class="draw-grid">
+      <div class="side">
+        <canvas class="pad" id="pad" role="img" aria-label="픽셀 그리기 칸. 칸을 누르면 검게 칠해지고 다시 누르면 지워집니다."></canvas>
+        <div class="legend"><span><i style="background:var(--trace)"></i>밑그림(아날로그 그림)</span><span id="diffLegend" hidden><i style="background:var(--miss)"></i>빠진 칸 &nbsp;<i style="background:var(--bad)"></i>더 칠한 칸</span></div>
+        <div class="row">
+          <label class="check"><input type="checkbox" id="showTpl" checked> 밑그림 보이기</label>
+          <button class="btn" type="button" id="compareTpl">밑그림과 비교</button>
+          <button class="btn" type="button" id="clearPad">모두 지우기</button>
+        </div>
+        <span class="status" id="tplStatus" hidden></span>
+      </div>
+      <div class="side">
+        <div><span class="lbl">한 줄씩 이진수로 적기 (검은색 0 · 흰색 1)</span><div class="codes" id="codes"></div></div>
+        <div class="row">
+          <button class="btn primary" type="button" id="checkCodes">이진수 점검</button>
+          <span class="status" id="codeStatus" hidden></span>
+        </div>
+        <div class="decode">
+          <canvas id="decodeCv" role="img" aria-label="내가 적은 이진수로 다시 그린 그림"></canvas>
+          <p><b>내 이진수로 되살린 그림</b><br>컴퓨터는 내가 적은 0과 1만 보고 이렇게 그립니다. 왼쪽 그림과 같나요? 회색 칸은 아직 적지 않은 칸이에요.</p>
+        </div>
+        <div class="size" id="bwSize"></div>
+      </div>
+    </div>
+
+    <section class="kit" aria-labelledby="kitTitle">
+      <div class="kit-head"><h3 id="kitTitle">활동지에 붙여 넣기</h3><span>[복사]를 누르고 활동지의 같은 이름 칸을 클릭한 뒤 <kbd>Ctrl</kbd>+<kbd>V</kbd> · 캡처하지 않아도 돼요.</span></div>
+      <div class="kit-grid">
+        <div class="kit-tile"><span class="t">이미지 (밑그림)</span><img id="kitTplImg" alt="밑그림 이미지"><button class="btn primary" type="button" id="kitTplBtn">밑그림 복사</button></div>
+        <div class="kit-tile"><span class="t">픽셀 이미지</span><img id="kitPixImg" alt="내가 칠한 픽셀 이미지"><button class="btn primary" type="button" id="kitPixBtn">픽셀 이미지 복사</button></div>
+        <div class="kit-tile"><span class="t">이진수 표현</span><img id="kitBinImg" alt="내가 적은 이진수"><button class="btn primary" type="button" id="kitBinBtn">이진수 복사</button></div>
+      </div>
+      <span class="status" id="kitStatus" hidden></span>
+    </section>
+
+    <details class="expert" id="expert">
+      <summary>고수 도전 · 9가지 색으로 그리기 (빨리 끝낸 사람만)</summary>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+        <p class="hint">두 가지 색은 1비트면 충분했죠. <b>색이 9가지</b>가 되면 한 칸에 몇 비트가 필요할까요? 교과서 색상 코드로 5×5 그림을 그리고, 한 칸을 <b>4자리 이진수</b>로 적어 보세요.</p>
+        <div class="palette" id="palette" role="group" aria-label="색 고르기"></div>
+        <div class="draw-grid">
+          <div class="side"><canvas class="pad" id="padC" role="img" aria-label="9색 픽셀 그리기 칸"></canvas>
+            <div class="row"><button class="btn" type="button" id="clearPadC">모두 흰색으로</button></div>
+          </div>
+          <div class="side">
+            <div><span class="lbl">한 줄에 5칸 · 칸마다 4자리 (띄어쓰기는 자유)</span><div class="codes" id="codesC"></div></div>
+            <div class="row"><button class="btn primary" type="button" id="checkCodesC">이진수 점검</button><span class="status" id="codeStatusC" hidden></span></div>
+            <div class="decode"><canvas id="decodeCvC" role="img" aria-label="9색 이진수로 되살린 그림"></canvas><p><b>되살린 그림</b><br>8(1000)보다 큰 수는 정해진 색이 없어서 ?로 보여요.</p></div>
+            <div class="size" id="colSize"></div>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= STAGE 2 ================= -->
+  <section class="panel" id="stage2" role="tabpanel" aria-labelledby="tabS2" hidden>
+    <div class="head-row"><h2>작전 2 · 해상도 실험실</h2><span class="status info" id="srcName">예시 그림</span></div>
+    <div class="drop" id="drop">
+      <label class="btn primary" for="fileIn">내 사진 넣기</label>
+      <input type="file" id="fileIn" accept="image/*" hidden>
+      <span>파일을 여기로 끌어 오거나, 웹에서 <b>이미지 복사</b> 후 이 화면에서 <kbd>Ctrl</kbd>+<kbd>V</kbd> 해도 돼요. 사진은 이 기기 밖으로 나가지 않아요. 친구 얼굴 사진은 쓰지 마세요.</span>
+      <button class="btn" type="button" id="useSample">예시 그림으로</button>
+    </div>
+    <div class="lab">
+      <div class="stage-view">
+        <canvas class="view" id="view" role="img" aria-label="해상도와 색 수를 바꾼 이미지"></canvas>
+        <div class="row">
+          <div><span class="lbl">가로 픽셀 수 (해상도)</span><div class="seg" id="resSeg"></div></div>
+          <div><span class="lbl">색 수 (한 픽셀의 비트 수)</span><div class="seg" id="colSeg"></div></div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat full"><span>해상도</span><b id="stRes"></b></div>
+        <div class="stat"><span>1픽셀</span><b id="stBpp"></b></div>
+        <div class="stat"><span>색 수</span><b id="stCols"></b></div>
+        <div class="stat full"><span>데이터 크기 = 픽셀 수 × 비트 수</span><b id="stSize"></b><div class="meter"><div id="meterFill"></div></div><span id="stKB" style="margin-top:4px"></span></div>
+        <div class="stat full" style="display:flex;flex-direction:column;gap:6px">
+          <button class="btn" type="button" id="recLow">지금 설정을 <b>낮은 해상도</b>로 기록</button>
+          <button class="btn" type="button" id="recHigh">지금 설정을 <b>높은 해상도</b>로 기록</button>
+          <span class="status" id="recStatus" hidden></span>
+        </div>
+      </div>
+    </div>
+    <div class="recs">
+      <div class="rec"><h3>낮은 해상도 기록</h3><div id="recLowBox"></div></div>
+      <div class="rec"><h3>높은 해상도 기록</h3><div id="recHighBox"></div></div>
+    </div>
+    <div class="proscons">
+      <div><label class="lbl" for="lowPC">낮은 해상도 이미지 · 장점과 단점</label><input class="txt" id="lowPC" type="text" maxlength="60" placeholder="예) 용량이 작다 / 계단처럼 거칠다" autocomplete="off"></div>
+      <div><label class="lbl" for="highPC">높은 해상도 이미지 · 장점과 단점</label><input class="txt" id="highPC" type="text" maxlength="60" placeholder="예) 선명하다 / 용량이 크다" autocomplete="off"></div>
+    </div>
+  </section>
+
+  <!-- ================= STAGE 3 ================= -->
+  <section class="panel" id="stage3" role="tabpanel" aria-labelledby="tabS3" hidden>
+    <div class="head-row"><h2>작전 보고</h2></div>
+    <div class="row">
+      <div><label class="lbl" for="stuNo">학번</label><input class="txt" id="stuNo" type="text" inputmode="numeric" maxlength="6" placeholder="10312" autocomplete="off" style="width:120px"></div>
+      <div><label class="lbl" for="stuName">이름</label><input class="txt" id="stuName" type="text" maxlength="10" placeholder="홍길동" autocomplete="off" style="width:140px"></div>
+      <div style="flex:1;min-width:220px"><label class="lbl" for="stuNote">한 줄 소감 · 오늘 알게 된 것</label><input class="txt" id="stuNote" type="text" maxlength="60" placeholder="예) 픽셀이 많고 색이 많을수록 선명하지만 용량이 커진다" autocomplete="off"></div>
+    </div>
+    <p class="hint">학번·이름은 이 화면에만 보이고 <b>어디에도 저장되지 않습니다.</b> 새로고침하면 지워져요.</p>
+
+    <figure class="card-img">
+      <figcaption>내 결과 카드 (입력하면 바로 바뀌어요) · 버튼이 안 되면 그림 위에서 <b>마우스 오른쪽 클릭</b>(크롬북은 <b>두 손가락으로 탭</b>) → <b>이미지 복사</b></figcaption>
+      <img id="cardImg" alt="그림 암호 작전 결과 카드">
+    </figure>
+
+    <div class="submit-guide">
+      <div>
+        <span><b>이미지로 내기</b> · 버튼 하나로 결과 카드를 그림으로 가져갈 수 있어요.</span>
+        <div class="row">
+          <button class="btn primary" type="button" id="imgCopyBtn">이미지 복사</button>
+          <button class="btn" type="button" id="imgSaveBtn">이미지 파일로 저장</button>
+        </div>
+        <span class="status ok" id="imgStatus" hidden></span>
+        <ol class="steps">
+          <li><b>이미지 복사</b> → 통합학습창 입력칸을 누르고 <kbd>Ctrl</kbd>+<kbd>V</kbd></li>
+          <li>붙여 넣기가 안 되면 <b>이미지 파일로 저장</b> → 통합학습창에서 파일 올리기</li>
+        </ol>
+      </div>
+      <div>
+        <span><b>글로 내기</b> · 복사한 뒤 통합학습창 댓글·입력칸에 붙여 넣으세요.</span>
+        <div class="row"><button class="btn" type="button" id="copyBtn">결과 글 복사</button><span class="status ok" id="copied" hidden>복사했어요</span></div>
+      </div>
+    </div>
+    <textarea id="copyArea" readonly hidden aria-label="복사할 결과"></textarea>
+
+    <ol class="questions">
+      <li>가로·세로 픽셀 수를 각각 <b>두 배</b>로 늘리면 데이터 크기는 몇 배가 될까요?</li>
+      <li>2가지 색은 1비트, 9가지 색은 왜 <b>4비트</b>가 필요할까요? 3비트로는 몇 가지 색까지 될까요?</li>
+      <li>지난 시간 소리의 <b>표본화 간격</b>, <b>양자화 비트 수</b>는 이미지의 무엇과 닮았나요?</li>
+    </ol>
+    <div class="mb"><b>마이크로비트 연결</b> · 마이크로비트 LED 화면은 <b>5×5 = 25픽셀</b>짜리 흑백 이미지예요. 그런데 LED는 <b>켜진 칸이 1</b>이라서 교과서 약속(검은색 0)과 반대예요. 같은 0과 1이라도 약속이 다르면 어떤 그림이 될까요?</div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const BLACK = "#111111", WHITE = "#FFFFFF";
+  // 교과서 50쪽 색상 코드 (0~8, 4비트)
+  const PAL9 = [
+    ["검은색", "#111111"], ["흰색", "#FFFFFF"], ["빨간색", "#E53935"], ["주황색", "#FB8C00"], ["노란색", "#FDD835"],
+    ["초록색", "#43A047"], ["파란색", "#1E88E5"], ["남색", "#283593"], ["보라색", "#8E24AA"],
+  ];
+  const PAL9_RGB = PAL9.map(([, h]) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
+  const bin = (v, w) => v.toString(2).padStart(w, "0");
+  const fmt = (n) => Math.round(n).toLocaleString("ko-KR");
+
+  // ---------- 밑그림 (아날로그 그림, 0~1 좌표) ----------
+  const arc = (cx, cy, rx, ry, a0, a1, steps = 90) => Array.from({ length: steps + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / steps; return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)]; });
+  function heart() {
+    const pts = []; for (let i = 0; i <= 240; i++) { const t = i / 240 * 2 * Math.PI; pts.push([16 * Math.sin(t) ** 3, -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t))]); }
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), sc = 0.8 / Math.max(x1 - x0, y1 - y0);
+    return [pts.map(([x, y]) => [0.5 + (x - (x0 + x1) / 2) * sc, 0.5 + (y - (y0 + y1) / 2) * sc])];
+  }
+  const TPL = {
+    heart: { name: "하트", lines: heart() },
+    smile: { name: "웃는 얼굴", lines: [arc(.5, .5, .4, .4, 0, 2 * Math.PI, 160), arc(.34, .38, .05, .05, 0, 2 * Math.PI, 30), arc(.66, .38, .05, .05, 0, 2 * Math.PI, 30), arc(.5, .52, .24, .2, .25, Math.PI - .25, 60)] },
+    note: { name: "음표", lines: [arc(.37, .76, .15, .1, 0, 2 * Math.PI, 90), [[.52, .76], [.52, .12]], [[.52, .12], [.62, .19], [.73, .3], [.74, .44]]] },
+    house: { name: "집", lines: [[[.1, .48], [.5, .1], [.9, .48]], [[.3, .29], [.3, .9], [.7, .9], [.7, .29]], [[.44, .9], [.44, .66], [.56, .66], [.56, .9]]] },
+    none: { name: "자유 그리기", lines: [] },
+  };
+  // 밑그림 정답 칸: must = 선이 분명히 지나간 칸(꼭 칠함), may = 선이 모서리·경계만 살짝 스친 칸(칠해도, 안 칠해도 정답)
+  const EDGE = 0.12, tplCache = {};
+  function tplCells(key, n) {
+    const id = key + n; if (tplCache[id]) return tplCache[id];
+    const depth = new Map(), eps = 1e-9, clamp = (v) => Math.min(n - 1, Math.max(0, v));
+    const cand = (V) => { const f = Math.floor(V), out = [clamp(f)]; if (V - f < eps && f > 0) out.push(clamp(f - 1)); return out; };
+    TPL[key].lines.forEach((pl) => { for (let k = 0; k < pl.length - 1; k++) {
+      const [ax, ay] = pl[k], [bx, by] = pl[k + 1], len = Math.hypot(bx - ax, by - ay), steps = Math.max(1, Math.ceil(len / 0.002));
+      for (let s = 0; s <= steps; s++) {
+        const X = (ax + (bx - ax) * s / steps) * n, Y = (ay + (by - ay) * s / steps) * n;
+        cand(X).forEach((cx) => cand(Y).forEach((cy) => { const d = Math.max(0, Math.min(X - cx, cx + 1 - X, Y - cy, cy + 1 - Y)), i = cy * n + cx; if (!(depth.get(i) >= d)) depth.set(i, d); }));
+      }
+    } });
+    const must = new Set(), may = new Set();
+    depth.forEach((d, i) => (d >= EDGE ? must : may).add(i));
+    return (tplCache[id] = { must, may });
+  }
+
+  // ---------- 상태 ----------
+  const S = {
+    stage: 1,
+    bw: { n: 8, tpl: "heart", cells: [], rows: [], marks: [], diff: null, showTpl: true },
+    col: { n: 5, cells: [], rows: [], marks: [], pick: 0 },
+    lab: { src: null, natW: 0, natH: 0, name: "예시 그림", res: 16, bpp: 4, pc: null, low: null, high: null },
+  };
+  function resetBW() { const n = S.bw.n; S.bw.cells = Array(n * n).fill(1); S.bw.rows = Array(n).fill(""); S.bw.marks = Array(n).fill(null); S.bw.diff = null; }
+  function resetCol() { const n = S.col.n; S.col.cells = Array(n * n).fill(1); S.col.rows = Array(n).fill(""); S.col.marks = Array(n).fill(null); }
+  resetBW(); resetCol();
+
+  // ---------- 격자 그리기 ----------
+  function fitCanvas(cv) {
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return null;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+    return { ctx, w, h };
+  }
+  function drawCells(ctx, x, y, size, n, colorOf, gridColor) {
+    const s = size / n;
+    for (let i = 0; i < n * n; i++) { ctx.fillStyle = colorOf(i); ctx.fillRect(x + (i % n) * s, y + Math.floor(i / n) * s, s + .5, s + .5); }
+    ctx.strokeStyle = gridColor; ctx.lineWidth = 1;
+    for (let k = 0; k <= n; k++) { const p = Math.round(k * s) + .5; ctx.beginPath(); ctx.moveTo(x + p, y); ctx.lineTo(x + p, y + size); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y + p); ctx.lineTo(x + size, y + p); ctx.stroke(); }
+  }
+  function renderPad() {
+    const f = fitCanvas($("pad")); if (!f) return; const { ctx, w } = f, n = S.bw.n, s = w / n;
+    drawCells(ctx, 0, 0, w, n, (i) => (S.bw.cells[i] === 0 ? BLACK : WHITE), "#B9C2CE");
+    if (S.bw.showTpl && S.bw.tpl !== "none") {
+      ctx.save(); ctx.strokeStyle = tok("--trace"); ctx.globalAlpha = .9; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      TPL[S.bw.tpl].lines.forEach((pl) => { ctx.beginPath(); pl.forEach(([x, y], i) => (i ? ctx.lineTo(x * w, y * w) : ctx.moveTo(x * w, y * w))); ctx.stroke(); });
+      ctx.restore();
+    }
+    if (S.bw.diff) {
+      ctx.save(); ctx.lineWidth = 3;
+      S.bw.diff.miss.forEach((i) => { ctx.strokeStyle = tok("--miss"); ctx.setLineDash([5, 4]); ctx.strokeRect((i % n) * s + 4, Math.floor(i / n) * s + 4, s - 8, s - 8); });
+      ctx.setLineDash([]);
+      S.bw.diff.extra.forEach((i) => { const x = (i % n) * s, y = Math.floor(i / n) * s; ctx.strokeStyle = tok("--bad"); ctx.beginPath(); ctx.moveTo(x + 6, y + 6); ctx.lineTo(x + s - 6, y + s - 6); ctx.moveTo(x + s - 6, y + 6); ctx.lineTo(x + 6, y + s - 6); ctx.stroke(); });
+      ctx.restore();
+    }
+    $("diffLegend").hidden = !S.bw.diff;
+  }
+  function renderPadC() {
+    const f = fitCanvas($("padC")); if (!f) return;
+    drawCells(f.ctx, 0, 0, f.w, S.col.n, (i) => PAL9[S.col.cells[i]][1], "#B9C2CE");
+  }
+  // 이진수로 되살린 그림 (적지 않은 칸은 회색)
+  function decodeBW() { const n = S.bw.n, out = []; for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) { const ch = S.bw.rows[r][c]; out.push(ch === "0" ? 0 : ch === "1" ? 1 : null); } return out; }
+  function chunksOf(str) { const bits = (str || "").replace(/[^01]/g, ""); const out = []; for (let i = 0; i + 4 <= bits.length; i += 4) out.push(parseInt(bits.slice(i, i + 4), 2)); return out; }
+  function decodeCol() { const n = S.col.n, out = []; for (let r = 0; r < n; r++) { const ch = chunksOf(S.col.rows[r]); for (let c = 0; c < n; c++) out.push(ch[c] === undefined ? null : ch[c]); } return out; }
+  function renderDecode(cv, n, vals, colorOfVal) {
+    const f = fitCanvas(cv); if (!f) return; const { ctx, w } = f, s = w / n;
+    drawCells(ctx, 0, 0, w, n, (i) => (vals[i] === null ? "#9AA4B2" : colorOfVal(vals[i]) || "#9AA4B2"), "#B9C2CE");
+    ctx.fillStyle = "#151B24"; ctx.font = `700 ${Math.round(s * .55)}px ${tok("--mono").split(",")[0]}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    vals.forEach((v, i) => { if (v !== null && !colorOfVal(v)) ctx.fillText("?", (i % n + .5) * s, (Math.floor(i / n) + .5) * s); });
+  }
+  const bwColor = (v) => (v === 0 ? BLACK : WHITE);
+  const colColor = (v) => (PAL9[v] ? PAL9[v][1] : null);
+
+  // ---------- 칸 칠하기 (누르고 끌기) ----------
+  function attachPaint(cv, getN, onCell) {
+    let mode = null;
+    const idx = (e) => { const r = cv.getBoundingClientRect(), n = getN(); const c = Math.floor((e.clientX - r.left) / r.width * n), rr = Math.floor((e.clientY - r.top) / r.height * n); if (c < 0 || rr < 0 || c >= n || rr >= n) return -1; return rr * n + c; };
+    cv.addEventListener("pointerdown", (e) => { const i = idx(e); if (i < 0) return; e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (_) {} mode = onCell(i, null); });
+    cv.addEventListener("pointermove", (e) => { if (mode === null) return; const i = idx(e); if (i >= 0) onCell(i, mode); });
+    const end = () => { mode = null; };
+    cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+  }
+  attachPaint($("pad"), () => S.bw.n, (i, mode) => {
+    const next = mode === null ? (S.bw.cells[i] === 0 ? 1 : 0) : mode;
+    if (S.bw.cells[i] !== next) { S.bw.cells[i] = next; drawingChanged(); }
+    return next;
+  });
+  attachPaint($("padC"), () => S.col.n, (i) => {
+    if (S.col.cells[i] !== S.col.pick) { S.col.cells[i] = S.col.pick; S.col.marks = S.col.marks.map(() => null); syncMarks("C"); renderPadC(); $("codeStatusC").hidden = true; }
+    return S.col.pick;
+  });
+  function drawingChanged() {
+    S.bw.diff = null; $("tplStatus").hidden = true; $("codeStatus").hidden = true;
+    S.bw.marks = S.bw.marks.map(() => null); syncMarks("");
+    renderPad(); scheduleKit();
+  }
+
+  // ---------- 이진수 입력 줄 ----------
+  function buildCodes(which) {
+    const isC = which === "C", st = isC ? S.col : S.bw, n = st.n, box = $(isC ? "codesC" : "codes");
+    box.innerHTML = Array.from({ length: n }, (_, r) => `<div class="code-row"><span class="n">${r + 1}행</span><input id="row${which}${r}" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="${isC ? 30 : n}" placeholder="${isC ? "0001 0001 0001 0001 0001" : "1".repeat(n)}" aria-label="${r + 1}행 이진수" value="${st.rows[r] || ""}"><span class="mark" id="mark${which}${r}"></span></div>`).join("");
+    for (let r = 0; r < n; r++) $(`row${which}${r}`).addEventListener("input", (e) => {
+      e.target.value = e.target.value.replace(isC ? /[^01 ]/g : /[^01]/g, "");
+      st.rows[r] = e.target.value; st.marks[r] = null; syncMarks(which);
+      $(isC ? "codeStatusC" : "codeStatus").hidden = true;
+      isC ? renderDecode($("decodeCvC"), S.col.n, decodeCol(), colColor) : (renderDecode($("decodeCv"), S.bw.n, decodeBW(), bwColor), scheduleKit());
+    });
+    syncMarks(which);
+  }
+  function syncMarks(which) {
+    const st = which === "C" ? S.col : S.bw;
+    for (let r = 0; r < st.n; r++) {
+      const inp = $(`row${which}${r}`), m = $(`mark${which}${r}`); if (!inp) continue;
+      inp.classList.remove("ok", "bad"); m.className = "mark"; m.textContent = "";
+      if (st.marks[r] === true) { inp.classList.add("ok"); m.classList.add("ok"); m.textContent = "✓"; }
+      if (st.marks[r] === false) { inp.classList.add("bad"); m.classList.add("bad"); m.textContent = "✗"; }
+    }
+  }
+  const expectBW = (r) => { const n = S.bw.n; return S.bw.cells.slice(r * n, r * n + n).map((v) => String(v)).join(""); };
+  const expectCol = (r) => { const n = S.col.n; return S.col.cells.slice(r * n, r * n + n); };
+  const hasTpl = () => S.bw.tpl !== "none";
+  const rowMatchesDrawing = (r) => S.bw.rows[r] !== "" && S.bw.rows[r] === expectBW(r);
+  // 밑그림이 있으면 정답은 밑그림 기준(선이 지나간 칸 0), 자유 그리기면 내 그림 기준
+  function rowOkBW(r) {
+    const n = S.bw.n, row = S.bw.rows[r] || "";
+    if (!hasTpl()) return rowMatchesDrawing(r);
+    if (row.length !== n) return false;
+    const { must, may } = tplCells(S.bw.tpl, n);
+    for (let c = 0; c < n; c++) { const i = r * n + c, ch = row[c]; if (may.has(i)) continue; if (ch !== (must.has(i) ? "0" : "1")) return false; }
+    return true;
+  }
+  const rowOkCol = (r) => { const ch = chunksOf(S.col.rows[r]), ex = expectCol(r); return (S.col.rows[r] || "").replace(/[^01]/g, "").length === ex.length * 4 && ex.every((v, i) => ch[i] === v); };
+
+  $("checkCodes").addEventListener("click", () => {
+    const n = S.bw.n; let right = 0;
+    for (let r = 0; r < n; r++) { const ok = rowOkBW(r); S.bw.marks[r] = ok; if (ok) right++; }
+    syncMarks("");
+    const st = $("codeStatus"); st.hidden = false;
+    if (S.bw.rows.every((x) => !x)) { st.className = "status bad"; st.textContent = "먼저 한 줄씩 이진수를 적어 주세요."; S.bw.marks = S.bw.marks.map(() => null); syncMarks(""); return; }
+    st.className = right === n ? "status ok" : "status warn";
+    if (right === n) { st.textContent = hasTpl() ? `${n}줄 모두 정확! 밑그림을 0과 1로 정확히 바꿨어요.` : `${n}줄 모두 정확! 되살린 그림이 내 그림과 똑같아요.`; return; }
+    const wrong = S.bw.marks.map((ok, r) => (ok ? -1 : r)).filter((r) => r >= 0);
+    const drawIssue = hasTpl() && wrong.some((r) => rowMatchesDrawing(r));
+    st.textContent = `${n}줄 중 ${right}줄 정확. ` + (drawIssue ? "✗ 줄은 내가 칠한 그림과는 같아요. [밑그림과 비교]로 칠한 칸부터 확인해 보세요." : "선이 지나간 칸은 0, 빈 칸은 1인지 다시 확인해 보세요.");
+  });
+  $("checkCodesC").addEventListener("click", () => {
+    const n = S.col.n; let right = 0;
+    for (let r = 0; r < n; r++) { const ok = rowOkCol(r); S.col.marks[r] = ok; if (ok) right++; }
+    syncMarks("C");
+    const st = $("codeStatusC"); st.hidden = false;
+    st.className = right === n ? "status ok" : "status warn";
+    st.textContent = right === n ? `${n}줄 모두 정확!` : `${n}줄 중 ${right}줄 정확. 색상 코드표를 다시 확인해 보세요.`;
+  });
+  $("compareTpl").addEventListener("click", () => {
+    const st = $("tplStatus"); st.hidden = false;
+    if (S.bw.tpl === "none") { st.className = "status info"; st.textContent = "자유 그리기에는 비교할 밑그림이 없어요."; return; }
+    const d = tplDiff(); S.bw.diff = d; renderPad();
+    st.className = !d.miss.length && !d.extra.length ? "status ok" : "status warn";
+    st.textContent = !d.miss.length && !d.extra.length ? "밑그림 선이 지나간 칸을 정확히 칠했어요!" : `빠진 칸 ${d.miss.length}개 · 더 칠한 칸 ${d.extra.length}개. 선이 지나가면 칠해요. (모서리만 살짝 스친 칸은 칠해도, 안 칠해도 괜찮아요.)`;
+  });
+  function tplDiff() {
+    const n = S.bw.n, { must, may } = tplCells(S.bw.tpl, n), miss = [], extra = [];
+    for (let i = 0; i < n * n; i++) { const black = S.bw.cells[i] === 0; if (must.has(i) && !black) miss.push(i); if (!must.has(i) && !may.has(i) && black) extra.push(i); }
+    return { miss, extra };
+  }
+  $("clearPad").addEventListener("click", () => { S.bw.cells = S.bw.cells.map(() => 1); drawingChanged(); });
+  $("clearPadC").addEventListener("click", () => { S.col.cells = S.col.cells.map(() => 1); S.col.marks = S.col.marks.map(() => null); syncMarks("C"); renderPadC(); });
+  $("showTpl").addEventListener("change", (e) => { S.bw.showTpl = e.target.checked; renderPad(); });
+
+  // ---------- 선택 버튼 ----------
+  function seg(el, items, get, set) {
+    el.innerHTML = items.map(([v, label]) => `<button type="button" data-v="${v}">${label}</button>`).join("");
+    const sync = () => el.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === String(get()))));
+    el.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; set(b.dataset.v); sync(); });
+    sync(); return sync;
+  }
+  seg($("sizeSeg"), [["5", "5×5 (마이크로비트)"], ["8", "8×8"]], () => S.bw.n, (v) => { if (+v === S.bw.n) return; S.bw.n = +v; resetBW(); buildCodes(""); $("tplStatus").hidden = true; $("codeStatus").hidden = true; renderStage1(); });
+  seg($("tplSeg"), Object.entries(TPL).map(([k, t]) => [k, t.name]), () => S.bw.tpl, (v) => {
+    if (v === S.bw.tpl) return;
+    const had = S.bw.cells.some((x) => x === 0) || S.bw.rows.some(Boolean);
+    S.bw.tpl = v; resetBW(); buildCodes(""); $("codeStatus").hidden = true; renderStage1();
+    const st = $("tplStatus"); st.hidden = !had;
+    if (had) { st.className = "status info"; st.textContent = `밑그림을 '${TPL[v].name}'(으)로 바꿔서 칠한 칸과 이진수를 새로 시작해요.`; }
+  });
+  $("palette").innerHTML = PAL9.map(([name, hex], i) => `<button type="button" data-c="${i}" aria-pressed="${i === S.col.pick}"><i style="background:${hex}"></i><span>${name}</span><code>${bin(i, 4)}</code></button>`).join("");
+  $("palette").addEventListener("click", (e) => { const b = e.target.closest("button[data-c]"); if (!b) return; S.col.pick = +b.dataset.c; $("palette").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); });
+  $("expert").addEventListener("toggle", () => requestAnimationFrame(renderStage1));
+
+  // ---------- 활동지에 붙여 넣기 (밑그림 · 픽셀 이미지 · 이진수, 항상 밝은 배경) ----------
+  const KIT = 480, KS = 2, KIT_MONO = '"IBM Plex Mono", ui-monospace, Consolas, monospace', KIT_SANS = '"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  function kitCanvas() { const cv = document.createElement("canvas"); cv.width = cv.height = KIT * KS; const c = cv.getContext("2d"); c.scale(KS, KS); c.fillStyle = "#FFFFFF"; c.fillRect(0, 0, KIT, KIT); return { cv, c }; }
+  function kitGrid(c, n, color, w) { const s = KIT / n; c.strokeStyle = color; c.lineWidth = w; for (let k = 0; k <= n; k++) { const p = Math.min(KIT - w / 2, Math.max(w / 2, k * s)); c.beginPath(); c.moveTo(p, 0); c.lineTo(p, KIT); c.stroke(); c.beginPath(); c.moveTo(0, p); c.lineTo(KIT, p); c.stroke(); } }
+  function kitTpl() {
+    const { cv, c } = kitCanvas(), n = S.bw.n;
+    kitGrid(c, n, "#C9D0DA", 1.5);
+    if (S.bw.tpl === "none") { c.fillStyle = "#566273"; c.font = `600 24px ${KIT_SANS}`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("밑그림 없음 (자유 그리기)", KIT / 2, KIT / 2); return cv; }
+    c.strokeStyle = "#0F7F7A"; c.lineWidth = 7; c.lineJoin = "round"; c.lineCap = "round";
+    TPL[S.bw.tpl].lines.forEach((pl) => { c.beginPath(); pl.forEach(([x, y], i) => (i ? c.lineTo(x * KIT, y * KIT) : c.moveTo(x * KIT, y * KIT))); c.stroke(); });
+    return cv;
+  }
+  function kitPix() {
+    const { cv, c } = kitCanvas(), n = S.bw.n, s = KIT / n;
+    for (let i = 0; i < n * n; i++) { c.fillStyle = S.bw.cells[i] === 0 ? BLACK : WHITE; c.fillRect((i % n) * s, Math.floor(i / n) * s, s + .5, s + .5); }
+    kitGrid(c, n, "#8A94A3", 2);
+    return cv;
+  }
+  function kitBin() {
+    const { cv, c } = kitCanvas(), n = S.bw.n, pad = 26, rowH = (KIT - pad * 2) / n, fs = Math.min(46, Math.round(rowH * 0.62));
+    c.textBaseline = "middle";
+    c.font = `700 ${fs}px ${KIT_MONO}`; const cw = c.measureText("0").width, gap = fs * 0.28, codeW = n * cw + (n - 1) * gap;
+    const labW = 56, x0 = (KIT - codeW) / 2 + labW / 2;
+    for (let r = 0; r < n; r++) {
+      const y = pad + rowH * (r + .5), row = S.bw.rows[r] || "";
+      c.font = `500 ${Math.round(fs * 0.5)}px ${KIT_SANS}`; c.fillStyle = "#8A94A3"; c.textAlign = "right"; c.fillText(`${r + 1}행`, x0 - 18, y);
+      c.font = `700 ${fs}px ${KIT_MONO}`; c.textAlign = "left";
+      for (let k = 0; k < n; k++) { const ch = row[k]; c.fillStyle = ch ? "#151B24" : "#C9D0DA"; c.fillText(ch || "_", x0 + k * (cw + gap), y); }
+    }
+    return cv;
+  }
+  let kitTimer = null;
+  function scheduleKit() { clearTimeout(kitTimer); kitTimer = setTimeout(() => { try { $("kitTplImg").src = kitTpl().toDataURL("image/png"); $("kitPixImg").src = kitPix().toDataURL("image/png"); $("kitBinImg").src = kitBin().toDataURL("image/png"); } catch (e) {} }, 120); }
+  function kitMsg(text, kind) { const st = $("kitStatus"); st.className = "status " + (kind || "ok"); st.textContent = text; st.hidden = false; clearTimeout(kitMsg.t); kitMsg.t = setTimeout(() => (st.hidden = true), 6000); }
+  function kitCopy(make, name, note) {
+    const failed = () => kitMsg(`버튼 복사가 막혀 있어요. 위 ${name} 그림에서 오른쪽 클릭(크롬북은 두 손가락 탭) → 이미지 복사를 해 주세요.`, "warn");
+    try {
+      if (!navigator.clipboard || !window.ClipboardItem) { failed(); return; }
+      const blob = new Promise((res, rej) => { try { make().toBlob((b) => (b ? res(b) : rej(new Error("toBlob"))), "image/png"); } catch (e) { rej(e); } });
+      navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]).then(() => kitMsg(`복사했어요! 활동지의 [${name}] 칸을 누르고 Ctrl+V 하세요.${note ? " " + note : ""}`, note ? "warn" : "ok"), failed);
+    } catch (e) { failed(); }
+  }
+  $("kitTplBtn").addEventListener("click", () => kitCopy(kitTpl, "밑그림", S.bw.tpl === "none" ? "(자유 그리기라 밑그림이 비어 있어요)" : ""));
+  $("kitPixBtn").addEventListener("click", () => kitCopy(kitPix, "픽셀 이미지", S.bw.cells.some((v) => v === 0) ? "" : "(아직 칠한 칸이 없어요)"));
+  $("kitBinBtn").addEventListener("click", () => { const n = S.bw.n, empty = S.bw.rows.filter((x) => (x || "").length < n).length; kitCopy(kitBin, "이진수", empty ? `(아직 다 적지 않은 줄이 ${empty}줄 있어요)` : ""); });
+
+  function renderStage1() {
+    scheduleKit();
+    renderPad(); renderDecode($("decodeCv"), S.bw.n, decodeBW(), bwColor);
+    const n = S.bw.n; $("bwSize").innerHTML = `${n} × ${n} = ${n * n}픽셀 &nbsp;×&nbsp; 1비트 &nbsp;=&nbsp; <b>${n * n}비트</b>`;
+    if ($("expert").open) { renderPadC(); renderDecode($("decodeCvC"), S.col.n, decodeCol(), colColor); }
+    $("colSize").innerHTML = `5 × 5 = 25픽셀 &nbsp;×&nbsp; 4비트 &nbsp;=&nbsp; <b>100비트</b> <span style="color:var(--muted)">(흑백이면 25비트)</span>`;
+  }
+
+  // ================= 작전 2 · 해상도 실험실 =================
+  const RES = [[8, "8"], [16, "16"], [32, "32"], [64, "64"], [128, "128"], ["orig", "원본"]];
+  const COLS = [[1, "2색 · 1비트", "2가지"], [4, "9색 · 4비트", "9가지"], [8, "256색 · 8비트", "256가지"], [24, "1600만 색 · 24비트", "약 1678만"]];
+  const colInfo = (b) => COLS.find((c) => c[0] === b);
+  function sampleImage() {
+    const c = document.createElement("canvas"); c.width = 480; c.height = 320; const x = c.getContext("2d");
+    const sky = x.createLinearGradient(0, 0, 0, 200); sky.addColorStop(0, "#5DA9E9"); sky.addColorStop(1, "#FCD9A8"); x.fillStyle = sky; x.fillRect(0, 0, 480, 320);
+    x.fillStyle = "#FFB300"; x.beginPath(); x.arc(360, 92, 42, 0, 7); x.fill();
+    x.fillStyle = "#6D8A68"; x.beginPath(); x.moveTo(0, 210); x.lineTo(110, 110); x.lineTo(210, 200); x.lineTo(300, 130); x.lineTo(480, 215); x.lineTo(480, 320); x.lineTo(0, 320); x.fill();
+    x.fillStyle = "#3F5E48"; x.beginPath(); x.moveTo(0, 240); x.lineTo(160, 170); x.lineTo(330, 235); x.lineTo(480, 200); x.lineTo(480, 320); x.lineTo(0, 320); x.fill();
+    const lake = x.createLinearGradient(0, 250, 0, 320); lake.addColorStop(0, "#3C86B8"); lake.addColorStop(1, "#1F4E79"); x.fillStyle = lake; x.fillRect(0, 262, 480, 58);
+    x.fillStyle = "rgba(255,210,120,.55)"; for (let i = 0; i < 6; i++) x.fillRect(330 + (i % 2) * 12, 270 + i * 8, 60 - i * 8, 3);
+    x.fillStyle = "#6B4226"; x.fillRect(74, 205, 10, 44); x.fillStyle = "#2E7D32"; x.beginPath(); x.moveTo(79, 140); x.lineTo(112, 212); x.lineTo(46, 212); x.fill();
+    x.fillStyle = "#FFFFFF"; x.beginPath(); x.arc(150, 60, 18, 0, 7); x.arc(172, 52, 22, 0, 7); x.arc(196, 62, 16, 0, 7); x.fill();
+    return c;
+  }
+  function setSource(imgOrCanvas, name) {
+    const natW = imgOrCanvas.naturalWidth || imgOrCanvas.width, natH = imgOrCanvas.naturalHeight || imgOrCanvas.height;
+    const k = Math.min(1, 1024 / Math.max(natW, natH)), c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(natW * k)); c.height = Math.max(1, Math.round(natH * k));
+    const x = c.getContext("2d"); x.imageSmoothingQuality = "high"; x.drawImage(imgOrCanvas, 0, 0, c.width, c.height);
+    Object.assign(S.lab, { src: c, natW, natH, name, low: null, high: null });
+    $("srcName").textContent = name.length > 28 ? name.slice(0, 27) + "…" : name;
+    $("recStatus").hidden = true; renderRecs(); renderLab();
+  }
+  function labDims() {
+    const L = S.lab; if (L.res === "orig") return { W: L.natW, H: L.natH, pw: L.src.width, ph: L.src.height };
+    const W = L.res, H = Math.max(1, Math.round(W * L.natH / L.natW)); return { W, H, pw: W, ph: H };
+  }
+  function quantize(data, bpp) {
+    for (let i = 0; i < data.length; i += 4) {
+      let r = data[i], g = data[i + 1], b = data[i + 2];
+      if (bpp === 1) { const v = 0.299 * r + 0.587 * g + 0.114 * b >= 128 ? 255 : 17; r = g = b = v; }
+      else if (bpp === 4) { let best = 0, bd = 1e9; PAL9_RGB.forEach((p, k) => { const d = (p[0] - r) ** 2 + (p[1] - g) ** 2 + (p[2] - b) ** 2; if (d < bd) { bd = d; best = k; } }); [r, g, b] = PAL9_RGB[best]; }
+      else if (bpp === 8) { r = Math.round(r / 255 * 7) / 7 * 255; g = Math.round(g / 255 * 7) / 7 * 255; b = Math.round(b / 255 * 3) / 3 * 255; }
+      data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
+    }
+  }
+  function processLab() {
+    const { pw, ph } = labDims(), c = document.createElement("canvas"); c.width = pw; c.height = ph;
+    const x = c.getContext("2d"); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = "high"; x.fillStyle = "#fff"; x.fillRect(0, 0, pw, ph);
+    x.drawImage(S.lab.src, 0, 0, pw, ph);
+    if (S.lab.bpp !== 24) { const d = x.getImageData(0, 0, pw, ph); quantize(d.data, S.lab.bpp); x.putImageData(d, 0, 0); }
+    return c;
+  }
+  function drawPixelated(cv, pc, cssW, gridMax) {
+    const dpr = window.devicePixelRatio || 1, w = cssW, h = Math.round(w * pc.height / pc.width);
+    cv.style.height = h + "px"; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    const x = cv.getContext("2d"); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.imageSmoothingEnabled = false; x.drawImage(pc, 0, 0, w, h);
+    if (pc.width <= gridMax) { x.strokeStyle = "rgba(128,128,128,.45)"; x.lineWidth = 1; const s = w / pc.width;
+      for (let k = 1; k < pc.width; k++) { x.beginPath(); x.moveTo(Math.round(k * s) + .5, 0); x.lineTo(Math.round(k * s) + .5, h); x.stroke(); }
+      for (let k = 1; k < pc.height; k++) { x.beginPath(); x.moveTo(0, Math.round(k * s) + .5); x.lineTo(w, Math.round(k * s) + .5); x.stroke(); } }
+  }
+  const sizeOf = (W, H, b) => { const bits = W * H * b, bytes = bits / 8, kb = bytes / 1024; return { bits, bytes, kbTxt: kb < 0.1 ? "0.1 KB 미만" : kb < 1024 ? kb.toFixed(1) + " KB" : (kb / 1024).toFixed(1) + " MB" }; };
+  function renderLab() {
+    if (!S.lab.src) return;
+    const view = $("view"), w = view.clientWidth; if (!w) return;
+    const pc = processLab(); S.lab.pc = pc; drawPixelated(view, pc, w, 32);
+    const { W, H } = labDims(), b = S.lab.bpp, sz = sizeOf(W, H, b), full = S.lab.natW * S.lab.natH * 24;
+    $("stRes").textContent = `${fmt(W)} × ${fmt(H)} = ${fmt(W * H)}픽셀`;
+    $("stBpp").textContent = `${b}비트`; $("stCols").textContent = colInfo(b)[2];
+    $("stSize").textContent = `${fmt(W * H)} × ${b} = ${fmt(sz.bits)}비트`;
+    const pct = sz.bits / full * 100;
+    $("meterFill").style.width = Math.max(1, pct) + "%";
+    $("stKB").textContent = `= ${fmt(sz.bytes)}바이트 ≈ ${sz.kbTxt} · 원본의 ${pct < 0.1 ? "0.1% 미만" : pct.toFixed(1) + "%"}`;
+  }
+  seg($("resSeg"), RES, () => S.lab.res, (v) => { S.lab.res = v === "orig" ? "orig" : +v; renderLab(); });
+  seg($("colSeg"), COLS.map(([b, l]) => [b, l]), () => S.lab.bpp, (v) => { S.lab.bpp = +v; renderLab(); });
+
+  function record(which) {
+    const { W, H } = labDims(), b = S.lab.bpp, pc = S.lab.pc; if (!pc) return;
+    const copy = document.createElement("canvas"); copy.width = pc.width; copy.height = pc.height; copy.getContext("2d").drawImage(pc, 0, 0);
+    S.lab[which] = { W, H, b, canvas: copy, ...sizeOf(W, H, b) };
+    renderRecs();
+    const st = $("recStatus"), L = S.lab; st.hidden = false;
+    if (L.low && L.high && L.low.bits >= L.high.bits) { st.className = "status warn"; st.textContent = "낮은 해상도 기록이 더 크거나 같아요. 두 설정을 다시 골라 보세요."; }
+    else { st.className = "status ok"; st.textContent = which === "low" ? "낮은 해상도를 기록했어요." : "높은 해상도를 기록했어요."; }
+    scheduleCard();
+  }
+  $("recLow").addEventListener("click", () => record("low"));
+  $("recHigh").addEventListener("click", () => record("high"));
+  const recLine = (r) => `${fmt(r.W)}×${fmt(r.H)} · ${colInfo(r.b)[1]}`;
+  function renderRecs() {
+    ["low", "high"].forEach((k) => {
+      const box = $(k === "low" ? "recLowBox" : "recHighBox"), r = S.lab[k];
+      if (!r) { box.innerHTML = `<div class="empty">아직 기록 안 함</div>`; return; }
+      box.innerHTML = `<canvas></canvas><div>${recLine(r)}<br><b>${fmt(r.bits)}비트</b> (${r.kbTxt})</div>`;
+      const cv = box.querySelector("canvas"); requestAnimationFrame(() => drawPixelated(cv, r.canvas, cv.clientWidth || 300, 32));
+    });
+  }
+
+  // 사진 넣기: 파일 선택 · 끌어 놓기 · 붙여 넣기
+  function loadFile(file) {
+    const st = $("recStatus");
+    const fail = () => { st.hidden = false; st.className = "status bad"; st.textContent = "이 파일은 열 수 없어요. JPG나 PNG 사진으로 넣어 주세요."; };
+    if (!file || !/^image\//.test(file.type)) { fail(); return; }
+    const name = file.name || "붙여 넣은 이미지";
+    const viaReader = () => { const fr = new FileReader(); fr.onload = () => { const im = new Image(); im.onload = () => setSource(im, name); im.onerror = fail; im.src = fr.result; }; fr.onerror = fail; fr.readAsDataURL(file); };
+    try { const url = URL.createObjectURL(file), im = new Image(); im.onload = () => { setSource(im, name); URL.revokeObjectURL(url); }; im.onerror = () => { URL.revokeObjectURL(url); viaReader(); }; im.src = url; }
+    catch (e) { viaReader(); }
+  }
+  $("fileIn").addEventListener("change", (e) => { loadFile(e.target.files && e.target.files[0]); e.target.value = ""; });
+  const drop = $("drop");
+  ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) loadFile(f); });
+  document.addEventListener("paste", (e) => {
+    const items = (e.clipboardData && e.clipboardData.items) || []; const it = Array.from(items).find((x) => x.type && x.type.startsWith("image/"));
+    if (!it) return; e.preventDefault(); if (S.stage !== 2) showStage(2); loadFile(it.getAsFile());
+  });
+  $("useSample").addEventListener("click", () => setSource(sampleImage(), "예시 그림"));
+  ["lowPC", "highPC"].forEach((id) => $(id).addEventListener("input", scheduleCard));
+
+  // ================= 작전 보고 · 결과 카드 =================
+  function summary() {
+    const n = S.bw.n, drawn = S.bw.cells.some((v) => v === 0), typed = S.bw.rows.some(Boolean);
+    let rowsRight = 0; for (let r = 0; r < n; r++) if (rowOkBW(r)) rowsRight++;
+    const d = S.bw.tpl !== "none" && drawn ? tplDiff() : null;
+    const colTyped = S.col.rows.some(Boolean); let colRight = 0; for (let r = 0; r < S.col.n; r++) if (rowOkCol(r)) colRight++;
+    return {
+      who: [($("stuNo").value || "").trim(), ($("stuName").value || "").trim()].filter(Boolean).join(" ") || "학번 · 이름",
+      n, tpl: TPL[S.bw.tpl].name,
+      cmp: S.bw.tpl === "none" ? "자유 그리기" : !drawn ? "아직 칠하지 않음" : !d.miss.length && !d.extra.length ? "정확히 칠함 ✓" : `빠진 칸 ${d.miss.length} · 더 칠한 칸 ${d.extra.length}`,
+      code: typed ? `${n}줄 중 ${rowsRight}줄 정확${rowsRight === n ? " ✓" : ""}` : "아직 적지 않음",
+      size: `${n}×${n}×1 = ${n * n}비트`,
+      expert: colTyped ? `${S.col.n}줄 중 ${colRight}줄 · 100비트` : "도전 안 함",
+      low: S.lab.low, high: S.lab.high, src: S.lab.name,
+      lowPC: ($("lowPC").value || "").trim(), highPC: ($("highPC").value || "").trim(),
+      note: ($("stuNote").value || "").trim(),
+    };
+  }
+  const CARD = { bg: "#FFFFFF", cell: "#EAEEF3", ink: "#151B24", muted: "#566273", line: "#D0D7E1", head: "#2C4C8E", ok: "#217A48", bad: "#BA3B29" };
+  const F_SANS = '"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', F_DISP = '"Black Han Sans", ' + F_SANS, F_MONO = '"IBM Plex Mono", ui-monospace, Consolas, monospace';
+  function wrapText(ctx, text, maxW) {
+    const lines = []; let line = "";
+    const pushWord = (w) => { const t = line ? line + " " + w : w; if (ctx.measureText(t).width <= maxW) { line = t; return; } if (line) { lines.push(line); line = ""; } if (ctx.measureText(w).width <= maxW) { line = w; return; } for (const ch of w) { if (ctx.measureText(line + ch).width > maxW && line) { lines.push(line); line = ch; } else line += ch; } };
+    String(text).split("\n").forEach((p) => { p.split(" ").forEach(pushWord); if (line) { lines.push(line); line = ""; } });
+    return lines.length ? lines : [""];
+  }
+  function drawCard() {
+    const d = summary(), W = 1080, P = 40, IN = 22, SCALE = 2, BW = W - P * 2;
+    const m = document.createElement("canvas").getContext("2d");
+    // 높이 계산
+    const n = d.n, rowsH = 34 + n * 30, sec1Body = Math.max(260, rowsH, 5 * 58), sec1H = IN + 30 + 14 + sec1Body + IN;
+    const thumbW = (BW - IN * 2 - 24) / 2, thumbH = 210;
+    m.font = `500 21px ${F_SANS}`;
+    const pcLines = [...wrapText(m, "낮은 해상도: " + (d.lowPC || "—"), BW - IN * 2), ...wrapText(m, "높은 해상도: " + (d.highPC || "—"), BW - IN * 2)];
+    const sec2H = IN + 30 + 14 + thumbH + 12 + 60 + 14 + pcLines.length * 32 + IN;
+    m.font = `500 25px ${F_SANS}`; const noteLines = wrapText(m, d.note ? "“" + d.note + "”" : "한 줄 소감을 적어 주세요", BW - IN * 2);
+    const noteH = IN + 28 + 10 + noteLines.length * 36 + IN, HEAD = 104, GAP = 18;
+    const H = HEAD + P + sec1H + GAP + sec2H + GAP + noteH + 64;
+
+    const cv = document.createElement("canvas"); cv.width = W * SCALE; cv.height = H * SCALE;
+    const c = cv.getContext("2d"); c.scale(SCALE, SCALE); c.textBaseline = "top";
+    const rr = (x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+    const label = (t, x, y) => { c.fillStyle = CARD.muted; c.font = `500 19px ${F_SANS}`; c.fillText(t, x, y); };
+    c.fillStyle = CARD.bg; c.fillRect(0, 0, W, H);
+    c.fillStyle = CARD.head; c.fillRect(0, 0, W, HEAD);
+    c.fillStyle = "#fff"; c.font = `400 40px ${F_DISP}`; c.fillText("그림 암호 작전 · 결과 카드", P, 30);
+    c.textAlign = "right"; c.font = `700 30px ${F_SANS}`; c.fillText(d.who, W - P, 36); c.textAlign = "left";
+
+    // 작전 1
+    let y = HEAD + P; c.fillStyle = CARD.cell; rr(P, y, BW, sec1H, 14); c.fill();
+    c.fillStyle = CARD.ink; c.font = `700 23px ${F_SANS}`; c.fillText(`작전 1 · 그림을 0과 1로  (${n}×${n}, 검은색 0 · 흰색 1)`, P + IN, y + IN);
+    const top = y + IN + 30 + 14, D = 260, gx = P + IN;
+    drawCells(c, gx, top, D, n, (i) => (S.bw.cells[i] === 0 ? BLACK : WHITE), "#B9C2CE"); c.strokeStyle = CARD.ink; c.lineWidth = 2; c.strokeRect(gx, top, D, D);
+    const cx = gx + D + 30; label("내가 적은 이진수", cx, top);
+    c.font = `600 22px ${F_MONO}`;
+    for (let r = 0; r < n; r++) { const txt = S.bw.rows[r] || "—", ok = rowOkBW(r); c.fillStyle = S.bw.rows[r] ? CARD.ink : CARD.muted; c.fillText(txt, cx, top + 34 + r * 30); if (S.bw.rows[r]) { c.fillStyle = ok ? CARD.ok : CARD.bad; c.fillText(ok ? "✓" : "✗", cx + 150, top + 34 + r * 30); } }
+    const sx = cx + 200, stats = [["밑그림", d.tpl], ["밑그림 비교", d.cmp], ["이진수 점검", d.code], ["데이터 크기", d.size], ["고수 도전 · 9색 4비트", d.expert]];
+    stats.forEach(([k, v], i) => { label(k, sx, top + i * 58); c.fillStyle = CARD.ink; c.font = `700 23px ${F_SANS}`; c.fillText(v, sx, top + i * 58 + 24); });
+
+    // 작전 2
+    y += sec1H + GAP; c.fillStyle = CARD.cell; rr(P, y, BW, sec2H, 14); c.fill();
+    c.fillStyle = CARD.ink; c.font = `700 23px ${F_SANS}`; c.fillText(`작전 2 · 해상도 실험실  (${d.src.length > 22 ? d.src.slice(0, 21) + "…" : d.src})`, P + IN, y + IN);
+    const ty = y + IN + 30 + 14;
+    [["낮은 해상도", d.low], ["높은 해상도", d.high]].forEach(([name, r], k) => {
+      const x0 = P + IN + k * (thumbW + 24);
+      if (r) { const sc = Math.min(thumbW / r.canvas.width, thumbH / r.canvas.height), w = r.canvas.width * sc, h = r.canvas.height * sc;
+        c.imageSmoothingEnabled = false; c.drawImage(r.canvas, x0, ty + (thumbH - h) / 2, w, h); c.imageSmoothingEnabled = true; c.strokeStyle = CARD.line; c.lineWidth = 1; c.strokeRect(x0 + .5, ty + (thumbH - h) / 2 + .5, w, h); }
+      else { c.strokeStyle = CARD.line; c.setLineDash([6, 5]); c.lineWidth = 2; c.strokeRect(x0, ty, thumbW, thumbH); c.setLineDash([]); c.fillStyle = CARD.muted; c.font = `500 20px ${F_SANS}`; c.fillText("아직 기록 안 함", x0 + 20, ty + thumbH / 2 - 12); }
+      label(name + (r ? " · " + recLine(r) : ""), x0, ty + thumbH + 12);
+      c.fillStyle = CARD.ink; c.font = `700 24px ${F_SANS}`; c.fillText(r ? `${fmt(r.bits)}비트 (${r.kbTxt})` : "—", x0, ty + thumbH + 12 + 28);
+    });
+    c.fillStyle = CARD.ink; c.font = `500 21px ${F_SANS}`;
+    pcLines.forEach((ln, i) => c.fillText(ln, P + IN, ty + thumbH + 12 + 60 + 14 + i * 32));
+
+    // 소감
+    y += sec2H + GAP; c.strokeStyle = CARD.line; c.lineWidth = 2; rr(P, y, BW, noteH, 14); c.stroke();
+    label("한 줄 소감 · 오늘 알게 된 것", P + IN, y + IN);
+    c.fillStyle = d.note ? CARD.ink : CARD.muted; c.font = `500 25px ${F_SANS}`; noteLines.forEach((ln, i) => c.fillText(ln, P + IN, y + IN + 38 + i * 36));
+    const now = new Date(); c.fillStyle = CARD.muted; c.font = `400 18px ${F_SANS}`;
+    c.fillText("2.1.2 다양한 데이터의 디지털 표현 · 이미지: 픽셀 · 해상도 · 색상 코드", P, H - 44);
+    c.textAlign = "right"; c.fillText(`${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}`, W - P, H - 44); c.textAlign = "left";
+    return cv;
+  }
+  let cardTimer = null;
+  function scheduleCard() { if (S.stage !== 3) return; clearTimeout(cardTimer); cardTimer = setTimeout(() => { try { $("cardImg").src = drawCard().toDataURL("image/png"); } catch (e) {} }, 120); }
+  ["stuNo", "stuName", "stuNote"].forEach((id) => $(id).addEventListener("input", scheduleCard));
+  const cardBlob = () => new Promise((res, rej) => { try { drawCard().toBlob((b) => (b ? res(b) : rej(new Error("toBlob"))), "image/png"); } catch (e) { rej(e); } });
+  function imgMsg(text, kind) { const s = $("imgStatus"); s.className = "status " + (kind || "ok"); s.textContent = text; s.hidden = false; clearTimeout(imgMsg.t); imgMsg.t = setTimeout(() => (s.hidden = true), 5000); }
+  $("imgCopyBtn").addEventListener("click", () => {
+    const failed = () => imgMsg("이 화면에서는 버튼 복사가 막혀 있어요. 위 그림에서 오른쪽 클릭 → 이미지 복사를 해 주세요.", "warn");
+    try { if (!navigator.clipboard || !window.ClipboardItem) { failed(); return; }
+      navigator.clipboard.write([new ClipboardItem({ "image/png": cardBlob() })]).then(() => imgMsg("이미지를 복사했어요. 통합학습창 입력칸에서 Ctrl+V 하세요."), failed);
+    } catch (e) { failed(); }
+  });
+const __dl = (blob, name) => { const no = (String(name).match(/\d{3,6}/) || [""])[0]; name = "pixel-card" + (no ? "-" + no : "") + ".png"; const u = URL.createObjectURL(blob), a = document.createElement("a"); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); };
+  let downloads = null;
+  $("imgSaveBtn").addEventListener("click", async () => {
+    const d = summary(), who = d.who === "학번 · 이름" ? "" : "_" + d.who.replace(/[^\p{L}\p{N}]+/gu, "_");
+    if (!downloads) { try { __dl(await cardBlob(), `그림암호작전${who}.png`); imgMsg("다운로드 폴더에 저장했어요. 통합학습창에서 파일 올리기로 올리세요."); } catch (e) { imgMsg("저장하지 못했어요. 위 그림에서 오른쪽 클릭 → 이미지를 다른 이름으로 저장.", "warn"); } return; }
+    try { const blob = await cardBlob(); await downloads.save({ filename: `그림암호작전${who}.png`, data: blob }); imgMsg("저장했어요. 통합학습창에서 파일 올리기로 올리세요."); }
+    catch (e) { const code = e && e.code; imgMsg(code === "declined" ? "저장을 취소했어요." : code === "rate_limited" ? "저장 창이 이미 열려 있어요." : "저장하지 못했어요. 위 그림에서 오른쪽 클릭 → 이미지를 다른 이름으로 저장.", code === "declined" || code === "rate_limited" ? "info" : "warn"); }
+  });
+  $("copyBtn").addEventListener("click", () => {
+    const d = summary(), rec = (r) => (r ? `${recLine(r)} = ${fmt(r.bits)}비트` : "기록 안 함");
+    const text = `[그림 암호 작전] ${d.who}\n작전 1: ${d.n}×${d.n} 흑백 · 밑그림 ${d.tpl} (${d.cmp}) · 이진수 ${d.code} · ${d.size}\n고수 9색: ${d.expert}\n작전 2 (${d.src}): 낮은 해상도 ${rec(d.low)} / 높은 해상도 ${rec(d.high)}\n장단점: 낮은 해상도 ${d.lowPC || "-"} / 높은 해상도 ${d.highPC || "-"}\n소감: ${d.note || "-"}`;
+    const done = () => { const c = $("copied"); c.textContent = "복사했어요"; c.hidden = false; setTimeout(() => (c.hidden = true), 1800); };
+    const fallback = () => { const ta = $("copyArea"); ta.hidden = false; ta.value = text; ta.focus(); ta.select(); const c = $("copied"); c.hidden = false; c.textContent = "선택된 글자를 복사하세요 (Ctrl+C)"; };
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+  });
+
+  // ---------- 화면 전환 ----------
+  function showStage(n) {
+    S.stage = n; [1, 2, 3].forEach((i) => { $("stage" + i).hidden = i !== n; $("tabS" + i).setAttribute("aria-selected", String(i === n)); });
+    requestAnimationFrame(renderVisible); if (n === 3) scheduleCard();
+  }
+  document.querySelectorAll(".stage-tab").forEach((b) => b.addEventListener("click", () => showStage(+b.dataset.stage)));
+  function renderVisible() { if (S.stage === 1) renderStage1(); if (S.stage === 2) { renderLab(); renderRecs(); } }
+  window.addEventListener("resize", () => requestAnimationFrame(renderVisible));
+  if (window.matchMedia) { const mq = window.matchMedia("(prefers-color-scheme: dark)"); mq.addEventListener && mq.addEventListener("change", renderVisible); }
+  new MutationObserver(renderVisible).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { renderVisible(); scheduleCard(); });
+
+  buildCodes(""); buildCodes("C");
+  S.lab.src = null; setSource(sampleImage(), "예시 그림");
+  showStage(1);
+})();
+</script>
+
+</body>
+</html>
