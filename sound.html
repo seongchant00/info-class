@@ -331,6 +331,7 @@
       <button class="btn" type="button" id="vPlay">⏸ 멈춤</button>
       <div><span class="lbl">재생 속도</span><div class="seg" id="vSpeed"></div></div>
     </div>
+    <div><span class="lbl">장면 고르기</span><div class="seg" id="vScene"></div></div>
     <div class="row">
       <div><span class="lbl">FPS (1초에 몇 장)</span><div class="seg" id="vFps"></div></div>
       <div><span class="lbl">해상도 (가로 × 세로 픽셀)</span><div class="seg" id="vRes"></div></div>
@@ -339,12 +340,12 @@
     <div><span class="lbl" id="stripLbl"></span><div class="strip" id="strip"></div></div>
 
     <div class="vq">
-      <h3>① 관찰 · 몇 FPS부터 부드럽게 보이나요?</h3>
-      <div class="row"><div class="seg" id="vSmooth"></div><span class="hintline">FPS를 하나씩 바꿔 보고, 끊김이 거의 안 느껴지는 가장 낮은 값을 고르세요.</span></div>
+      <h3>① 관찰 · 이 장면은 몇 FPS부터 부드럽게 보이나요?</h3>
+      <div class="row"><div class="seg" id="vSmooth"></div><span class="hintline">장면을 2개 이상 바꿔 가며 골라 보세요. 빠른 장면(바람개비·자동차)과 느린 장면(구름)은 어떻게 다를까요?</span></div>
     </div>
 
     <div class="vq">
-      <h3>② 영상 크기 계산 · 지금 설정으로 10초</h3>
+      <h3>② 영상 크기 계산 · 지금 설정으로 10초 <span class="hintline" style="font-weight:400">(어떤 장면이든 계산 방법은 같아요)</span></h3>
       <div class="calc" id="vCalc"></div>
       <div class="row">
         <button class="btn primary" type="button" id="vCheck">계산 점검</button>
@@ -635,20 +636,74 @@
   // ================= STAGE 2 · 영상 암호 =================
   const PAL9 = [[17,17,17],[255,255,255],[229,57,53],[251,140,0],[253,216,53],[67,160,71],[30,136,229],[40,53,147],[142,36,170]]; // 교과서 9색 (검·흰·빨·주·노·초·파·남·보)
   const V_FPS = [1, 5, 12, 30], V_RES = [[16, 9], [32, 18], [64, 36], [128, 72]], V_COL = [[1, "흑백 · 1비트"], [4, "9색 · 4비트"], [8, "256색 · 8비트"], [24, "1600만 색 · 24비트"]];
-  const V = { fps: 12, res: 1, bpp: 4, speed: 1, playing: true, t: 0, last: 0, raf: 0, frameKey: "", smooth: null, calc: ["", "", ""], marks: [null, null, null], calcLog: null, concl: [], conclOk: null };
+  const V = { scene: "ball", fps: 12, res: 1, bpp: 4, speed: 1, playing: true, t: 0, last: 0, raf: 0, frameKey: "", smooth: {}, calc: ["", "", ""], marks: [null, null, null], calcLog: null, concl: [], conclOk: null };
   const fmtN = (n) => Math.round(n).toLocaleString("ko-KR");
   const vDims = () => V_RES[V.res];
-  function sceneAt(ctx, w, h, t) {
-    const sky = ctx.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, "#3F9AE3"); sky.addColorStop(1, "#BFE3F8");
+  // ---------- 장면 (사이트 안에서 그리는 '아날로그' 움직임, t초의 모습) ----------
+  const hash = (k) => { let x = Math.sin(k * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  function skyGround(ctx, w, h, top, bottom, ground, gyR) {
+    const sky = ctx.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, top); sky.addColorStop(1, bottom);
     ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "#FFD54A"; ctx.beginPath(); ctx.arc(w * .86, h * .2, h * .1, 0, 6.283); ctx.fill();
-    const gy = h * .78; ctx.fillStyle = "#3E8E47"; ctx.fillRect(0, gy, w, h - gy);
-    const u = (t % 4) / 4, tri = u < .5 ? u * 2 : 2 - u * 2, x = w * (.12 + .76 * tri);
-    const ph = t % 1, hop = 4 * ph * (1 - ph), r = h * .09, y = gy - r - hop * h * .52;
-    ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(x, gy + h * .02, r * (1.1 - hop * .5), r * .28, 0, 0, 6.283); ctx.fill();
-    ctx.fillStyle = "#F57C1F"; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
-    ctx.fillStyle = "#FFFFFF"; ctx.beginPath(); ctx.arc(x - r * .35, y - r * .35, r * .25, 0, 6.283); ctx.fill();
+    const gy = h * gyR; if (ground) { ctx.fillStyle = ground; ctx.fillRect(0, gy, w, h - gy); } return gy;
   }
+  const sun = (ctx, w, h) => { ctx.fillStyle = "#FFD54A"; ctx.beginPath(); ctx.arc(w * .86, h * .2, h * .1, 0, 6.283); ctx.fill(); };
+  const SCENES = {
+    ball: { name: "튀는 공", draw(ctx, w, h, t) {
+      const gy = skyGround(ctx, w, h, "#3F9AE3", "#BFE3F8", "#3E8E47", .78); sun(ctx, w, h);
+      const u = (t % 4) / 4, tri = u < .5 ? u * 2 : 2 - u * 2, x = w * (.12 + .76 * tri);
+      const ph = t % 1, hop = 4 * ph * (1 - ph), r = h * .09, y = gy - r - hop * h * .52;
+      ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(x, gy + h * .02, r * (1.1 - hop * .5), r * .28, 0, 0, 6.283); ctx.fill();
+      ctx.fillStyle = "#F57C1F"; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
+      ctx.fillStyle = "#FFFFFF"; ctx.beginPath(); ctx.arc(x - r * .35, y - r * .35, r * .25, 0, 6.283); ctx.fill();
+    } },
+    car: { name: "달리는 자동차", draw(ctx, w, h, t) {
+      skyGround(ctx, w, h, "#5FB0EA", "#D6EEFA", "#34383E", .62);
+      ctx.fillStyle = "#3E8E47"; ctx.fillRect(0, h * .56, w, h * .06);
+      ctx.fillStyle = "#FFFFFF"; const dash = w * .12, off = (t * w * .9) % (dash * 2);
+      for (let x = -off; x < w; x += dash * 2) ctx.fillRect(w - x - dash, h * .82, dash, h * .025);
+      const L = w * .3, x0 = ((t / 2.2) % 1) * (w + L * 1.4) - L * 1.2, y0 = h * .66;
+      ctx.fillStyle = "#D93A3A"; ctx.fillRect(x0, y0, L, h * .12); ctx.fillRect(x0 + L * .2, y0 - h * .09, L * .55, h * .1);
+      ctx.fillStyle = "#BFE6FF"; ctx.fillRect(x0 + L * .27, y0 - h * .07, L * .18, h * .07); ctx.fillRect(x0 + L * .5, y0 - h * .07, L * .18, h * .07);
+      [x0 + L * .22, x0 + L * .78].forEach((cx) => { const r = h * .065, cy = y0 + h * .13; ctx.fillStyle = "#1B1B1B"; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.fill();
+        ctx.strokeStyle = "#E0E0E0"; ctx.lineWidth = Math.max(1, r * .22); const a = t * 17; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r * .8, cy + Math.sin(a) * r * .8); ctx.lineTo(cx - Math.cos(a) * r * .8, cy - Math.sin(a) * r * .8); ctx.stroke(); });
+    } },
+    fan: { name: "돌아가는 바람개비", draw(ctx, w, h, t) {
+      const gy = skyGround(ctx, w, h, "#7CC7F2", "#E3F4FC", "#58A55C", .85);
+      const cx = w * .5, cy = h * .42, R = h * .34; ctx.fillStyle = "#8D6E63"; ctx.fillRect(cx - h * .02, cy, h * .04, gy - cy);
+      const cols = ["#E53935", "#FDD835", "#1E88E5", "#43A047"], a0 = t * 4.4 * 6.283;
+      cols.forEach((c, k) => { const a = a0 + k * 1.5708; ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); ctx.lineTo(cx + Math.cos(a + .9) * R * .72, cy + Math.sin(a + .9) * R * .72); ctx.closePath(); ctx.fill(); });
+      ctx.fillStyle = "#FFFFFF"; ctx.beginPath(); ctx.arc(cx, cy, h * .035, 0, 6.283); ctx.fill();
+    } },
+    walker: { name: "걷는 사람", draw(ctx, w, h, t) {
+      const gy = skyGround(ctx, w, h, "#8CCBF3", "#E8F6FD", "#58A55C", .84);
+      const x = ((t / 7) % 1) * w * 1.2 - w * .1, ph = t * 1.4 * 6.283, s = h * .16, hip = gy - s * 1.9 - Math.abs(Math.sin(ph)) * s * .08;
+      ctx.strokeStyle = "#263238"; ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, h * .035);
+      const limb = (x1, y1, ang, len) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + Math.sin(ang) * len, y1 + Math.cos(ang) * len); ctx.stroke(); };
+      limb(x, hip, Math.sin(ph) * .6, s * 1.9); limb(x, hip, -Math.sin(ph) * .6, s * 1.9);
+      ctx.beginPath(); ctx.moveTo(x, hip); ctx.lineTo(x, hip - s * 1.5); ctx.stroke();
+      limb(x, hip - s * 1.3, -Math.sin(ph) * .7, s * 1.2); limb(x, hip - s * 1.3, Math.sin(ph) * .7, s * 1.2);
+      ctx.fillStyle = "#263238"; ctx.beginPath(); ctx.arc(x, hip - s * 1.85, s * .38, 0, 6.283); ctx.fill();
+    } },
+    fireworks: { name: "불꽃놀이", draw(ctx, w, h, t) {
+      skyGround(ctx, w, h, "#0B1030", "#2A2F66", "#121212", .9);
+      const P = 1.6; for (let j = 0; j < 2; j++) {
+        const tt = t + j * P / 2, k = Math.floor(tt / P), tau = tt % P, cx = w * (.2 + .6 * hash(k * 3 + j)), top = h * (.22 + .2 * hash(k * 7 + j)), col = `hsl(${Math.floor(hash(k * 11 + j) * 360)},90%,60%)`;
+        if (tau < .45) { const y = h * .9 - (h * .9 - top) * (tau / .45); ctx.fillStyle = "#FFE082"; ctx.beginPath(); ctx.arc(cx, y, h * .012 + 1, 0, 6.283); ctx.fill(); continue; }
+        const e = tau - .45, R = h * .3 * (1 - Math.exp(-e * 3)), fall = e * e * h * .12, alpha = Math.max(0, 1 - e / (P - .45));
+        ctx.globalAlpha = alpha; ctx.fillStyle = col;
+        for (let i = 0; i < 18; i++) { const a = i / 18 * 6.283; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * R, top + Math.sin(a) * R + fall, h * .018 + 1, 0, 6.283); ctx.fill(); }
+        ctx.globalAlpha = 1;
+      }
+    } },
+    clouds: { name: "흘러가는 구름", draw(ctx, w, h, t) {
+      const gy = skyGround(ctx, w, h, "#4FA3E6", "#CDEBFB", "#6DB36F", .8); sun(ctx, w, h);
+      [[.1, .22, 1, .05], [.55, .35, .8, .035], [.3, .5, .6, .025]].forEach(([x0, y0, sc, sp], k) => {
+        const x = ((x0 + t * sp) % 1.3) * w - w * .15, y = h * y0, r = h * .08 * sc; ctx.fillStyle = "#FFFFFF";
+        [[0, 0, 1], [1.1, -.35, 1.2], [2.2, 0, 1]].forEach(([dx, dy, rs]) => { ctx.beginPath(); ctx.arc(x + dx * r, y + dy * r, r * rs, 0, 6.283); ctx.fill(); }); });
+      ctx.fillStyle = "#2E7D32"; [.15, .7, .85].forEach((tx) => { ctx.beginPath(); ctx.moveTo(w * tx, gy - h * .18); ctx.lineTo(w * tx + h * .08, gy); ctx.lineTo(w * tx - h * .08, gy); ctx.fill(); });
+    } },
+  };
+  function sceneAt(ctx, w, h, t) { ctx.save(); SCENES[V.scene].draw(ctx, w, h, t); ctx.restore(); }
   function quantizeData(d, bpp) {
     for (let i = 0; i < d.length; i += 4) {
       let r = d[i], g = d[i + 1], b = d[i + 2];
@@ -705,7 +760,9 @@
   seg($("vRes"), V_RES.map(([w, h], i) => [i, `${w}×${h}`]), () => V.res, (v) => { V.res = +v; settingsChanged(); });
   seg($("vCol"), V_COL, () => V.bpp, (v) => { V.bpp = +v; settingsChanged(); });
   seg($("vSpeed"), [["1", "보통"], ["0.25", "느리게 (¼배)"]], () => V.speed, (v) => { V.speed = +v; });
-  seg($("vSmooth"), V_FPS.map((f) => [f, f + " FPS"]), () => V.smooth, (v) => { V.smooth = +v; updateSummary(); });
+  const syncSmooth = seg($("vSmooth"), V_FPS.map((f) => [f, f + " FPS"]), () => V.smooth[V.scene], (v) => { V.smooth[V.scene] = +v; updateSummary(); });
+  seg($("vScene"), Object.entries(SCENES).map(([k, sc]) => [k, sc.name]), () => V.scene, (v) => { V.scene = v; V.frameKey = ""; syncSmooth(); renderStrip(); drawVideo(true); updateSummary(); });
+  const smoothText = () => { const e = Object.keys(SCENES).filter((k) => V.smooth[k]).map((k) => `${SCENES[k].name} ${V.smooth[k]}`); return e.length ? e.join(" · ") + " FPS부터 부드러움" : ""; };
   $("vPlay").addEventListener("click", (e) => { V.playing = !V.playing; e.currentTarget.textContent = V.playing ? "⏸ 멈춤" : "▶ 재생"; if (V.playing) startLoop(); });
   $("vCheck").addEventListener("click", () => {
     const truth = calcTruth(), st = $("vCalcStatus"); st.hidden = false;
@@ -753,7 +810,7 @@
       recv: rcv ? `복원률 ${rcv.rate}% ${"★".repeat(rcv.stars)}${"☆".repeat(3 - rcv.stars)}` : "아직 받지 않음",
       recvDiag,
       roles: `보내기 ${snt ? "✓" : "—"} · 받기 ${rcv ? "✓" : "—"}`,
-      quiz: V.smooth ? `${V.smooth} FPS부터 부드럽게 보임` : "아직 고르지 않음",
+      quiz: smoothText() || "아직 고르지 않음",
       rule: V.calcLog ? `${V.calcLog.set} · 10초 = ${V.calcLog.val !== null ? fmtN(V.calcLog.val) : "?"}비트 ${V.calcLog.ok ? "✓" : "✗"}` : "아직 점검 전",
       expert: V.conclOk === true ? "3문항 모두 정확 ✓" : V.conclOk === false ? "다시 확인 필요" : "아직 확인 전",
       note: ($("stuNote").value || "").trim(),
@@ -981,7 +1038,7 @@ const __dl = (blob, name) => { const no = (String(name).match(/\d{3,6}/) || [""]
   function drawVidSnap() {
     const m = 10, gap = 8, innerW = 1080 - 72, tw = (innerW - (m - 1) * gap) / m, th = tw * 9 / 16, rowsN = Math.ceil(V.fps / m);
     const stripH = 30 + rowsN * (th + gap), calcH = 3 * 52, infoH = 2 * 36;
-    const f = snapFrame("소리 암호 작전 · 작전 2 영상", settingText(), stripH + 22 + calcH + 22 + infoH, "2.1.2 다양한 데이터의 디지털 표현 · 영상 = 프레임 × FPS"), { c, W, P } = f;
+    const f = snapFrame("소리 암호 작전 · 작전 2 영상", `${SCENES[V.scene].name} · ${settingText()}`, stripH + 22 + calcH + 22 + infoH, "2.1.2 다양한 데이터의 디지털 표현 · 영상 = 프레임 × FPS"), { c, W, P } = f;
     let y = f.top; const [RW, RH] = vDims();
     c.textBaseline = "top"; c.textAlign = "left"; c.fillStyle = LC.muted; c.font = `600 18px ${F_SANS}`;
     c.fillText(`0초~1초 동안 찍은 프레임 = ${V.fps}장 · 한 장 = ${RW} × ${RH} = ${fmtN(RW * RH)}픽셀`, P, y); y += 30;
@@ -999,7 +1056,7 @@ const __dl = (blob, name) => { const no = (String(name).match(/\d{3,6}/) || [""]
       if (tone) { c.fillStyle = tone[1]; c.font = `700 22px ${F_SANS}`; c.fillText(mk ? "✓" : "✗", bx + bw + 60, yy + 23); }
     });
     y += calcH + 22; c.textBaseline = "top"; c.textAlign = "left"; c.font = `600 19px ${F_SANS}`;
-    c.fillStyle = LC.ink; c.fillText(`① 관찰: ${V.smooth ? V.smooth + " FPS부터 부드럽게 보임" : "아직 고르지 않음"}`, P, y);
+    c.fillStyle = LC.ink; c.fillText(`① 관찰: ${smoothText() || "아직 고르지 않음"}`, P, y);
     c.fillText(`③ 소리와 연결: ${V.conclOk === true ? "3문항 모두 정확 ✓" : V.conclOk === false ? "다시 확인 필요" : "아직 확인 전"}`, P, y + 36);
     return f.cv;
   }
