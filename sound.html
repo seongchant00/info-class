@@ -191,6 +191,12 @@
   .card-img figcaption { font-size: 13px; color: var(--muted); }
   .card-img figcaption b { color: var(--ink); }
   .card-img img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .snap { display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--line); padding-top: 12px; }
+  .snap .row .hintline { font-size: 13px; color: var(--muted); }
+  .snap figure { margin: 0; display: flex; flex-direction: column; gap: 6px; max-width: 720px; }
+  .snap figcaption { font-size: 13px; color: var(--muted); }
+  .snap figcaption b { color: var(--ink); }
+  .snap img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
   [hidden] { display: none !important; }
   kbd { font-family: var(--mono); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--surface); }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -244,6 +250,14 @@
           <div class="bits" id="cipherBits"></div>
           <div class="meta">쪽지에 그대로 옮겨 적거나, 짝에게 3자리씩 또박또박 불러 주세요. 다 보냈으면 역할을 바꿔 한 판 더!</div>
         </div>
+        <div class="snap">
+          <div class="row">
+            <button class="btn primary" type="button" id="sendSnapBtn">보낸 결과 이미지 복사</button>
+            <span class="hintline">활동지 칸이나 통합학습창을 누르고 <kbd>Ctrl</kbd>+<kbd>V</kbd> · 캡처하지 않아도 돼요.</span>
+          </div>
+          <span class="status" id="sendSnapStatus" hidden></span>
+          <figure id="sendSnapFig" hidden><figcaption>버튼 복사가 막혀 있어요. 아래 그림 위에서 <b>마우스 오른쪽 클릭</b>(크롬북은 <b>두 손가락으로 탭</b>) → <b>이미지 복사</b></figcaption><img id="sendSnapImg" alt="보내는 요원 결과 그림"></figure>
+        </div>
       </div>
     </div>
 
@@ -269,6 +283,14 @@
         <div class="score" id="scoreBox" hidden>
           <div><div class="stars" id="stars"></div><div class="big" id="rate"></div></div>
           <p id="scoreMsg"></p>
+        </div>
+        <div class="snap">
+          <div class="row">
+            <button class="btn primary" type="button" id="recvSnapBtn">받은 결과 이미지 복사</button>
+            <span class="hintline">활동지 칸이나 통합학습창을 누르고 <kbd>Ctrl</kbd>+<kbd>V</kbd> · 캡처하지 않아도 돼요.</span>
+          </div>
+          <span class="status" id="recvSnapStatus" hidden></span>
+          <figure id="recvSnapFig" hidden><figcaption>버튼 복사가 막혀 있어요. 아래 그림 위에서 <b>마우스 오른쪽 클릭</b>(크롬북은 <b>두 손가락으로 탭</b>) → <b>이미지 복사</b></figcaption><img id="recvSnapImg" alt="받는 요원 결과 그림"></figure>
         </div>
       </div>
     </div>
@@ -364,7 +386,7 @@
       <div>
         <b>이미지로 내기</b> · 캡처할 필요 없어요. 버튼 하나로 결과 카드가 그림이 됩니다.
         <div class="row" style="margin-top:8px">
-          <button class="btn primary" type="button" id="imgCopyBtn">이미지 복사</button>
+          <button class="btn primary" type="button" id="imgCopyBtn">결과 카드 이미지 복사</button>
           <button class="btn" type="button" id="imgSaveBtn">이미지 파일로 저장</button>
         </div>
         <span class="status ok" id="imgStatus" hidden></span>
@@ -851,6 +873,124 @@ const __dl = (blob, name) => { const no = (String(name).match(/\d{3,6}/) || [""]
     const done = () => { const c = $("copied"); c.textContent = "복사했어요"; c.hidden = false; setTimeout(() => (c.hidden = true), 1800); };
     const fallback = () => { const ta = $("copyArea"); ta.hidden = false; ta.value = text; ta.focus(); ta.select(); const c = $("copied"); c.hidden = false; c.textContent = "선택된 글자를 복사하세요 (Ctrl+C)"; };
     try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+  });
+
+  // ---------- 보내기 · 받기 결과 그림 (활동지 붙여 넣기용, 항상 밝은 색) ----------
+  const LC = { bg: "#FFFFFF", panel: "#F4F6F4", grid: "#DDE3DF", ink: "#16201C", muted: "#58675F", line: "#D3DBD6", analog: "#0F7F7A", sample: "#C0720E", digital: "#2C4C8E", head: "#B8471E",
+    ok: ["#E0F1E6", "#217A48"], bad: ["#F8E3DE", "#BA3B29"], warn: ["#FBF0DC", "#8A5A0B"] };
+  function rrect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+  function lightChart(c, x0, y0, w, h, o) {
+    const pl = 46, pr = 18, pt = 20, pb = 36, X = (t) => x0 + pl + (t / T_MAX) * (w - pl - pr), Y = (v) => y0 + h - pb - (v / Y_MAX) * (h - pt - pb);
+    c.fillStyle = LC.panel; rrect(c, x0, y0, w, h, 12); c.fill();
+    c.lineWidth = 1; c.font = `500 16px ${F_MONO}`; c.fillStyle = LC.muted;
+    for (let v = 0; v <= 7; v++) { c.strokeStyle = LC.grid; c.beginPath(); c.moveTo(x0 + pl, Y(v)); c.lineTo(x0 + w - pr, Y(v)); c.stroke(); c.textAlign = "right"; c.textBaseline = "middle"; c.fillText(String(v), x0 + pl - 10, Y(v)); }
+    for (let t = 0; t <= T_MAX; t++) { c.strokeStyle = LC.grid; c.beginPath(); c.moveTo(X(t), y0 + pt); c.lineTo(X(t), y0 + h - pb); c.stroke(); c.textAlign = "center"; c.textBaseline = "top"; c.font = `500 15px ${F_SANS}`; c.fillText(t + "초", X(t), y0 + h - pb + 10); }
+    if (o.wave) { c.save(); c.globalAlpha = o.waveAlpha || 1; c.strokeStyle = LC.analog; c.lineWidth = 3; c.beginPath(); for (let i = 0; i <= 500; i++) { const t = (i / 500) * T_MAX; i ? c.lineTo(X(t), Y(opWave(t))) : c.moveTo(X(t), Y(opWave(t))); } c.stroke(); c.restore(); }
+    if (o.dots) o.dots.forEach((p) => {
+      c.save(); c.strokeStyle = LC.sample; c.globalAlpha = .4; c.setLineDash([4, 5]); c.beginPath(); c.moveTo(X(p.t), Y(0)); c.lineTo(X(p.t), Y(p.v)); c.stroke(); c.restore();
+      c.fillStyle = LC.sample; c.strokeStyle = "#fff"; c.lineWidth = 2.5; c.beginPath(); c.arc(X(p.t), Y(p.v), 7, 0, 6.283); c.fill(); c.stroke();
+      if (o.labels) { c.fillStyle = LC.ink; c.font = `700 15px ${F_MONO}`; c.textAlign = p.t === 0 ? "left" : "center"; c.textBaseline = "bottom"; c.fillText(p.v.toFixed(1), X(p.t) + (p.t === 0 ? 6 : 0), Y(p.v) - 11); }
+    });
+    if (o.stair) { c.strokeStyle = LC.digital; c.fillStyle = LC.digital; c.lineWidth = 3.5;
+      o.stair.forEach((p, i) => { if (p.v === undefined || p.v === null) return; const x1 = X(i < o.stair.length - 1 ? o.stair[i + 1].t : T_MAX); c.beginPath(); c.moveTo(X(p.t), Y(p.v)); c.lineTo(x1, Y(p.v)); c.stroke(); c.beginPath(); c.arc(X(p.t), Y(p.v), 5, 0, 6.283); c.fill(); }); }
+  }
+  // rows: [{ label, vals: [], box: bool, tone: [] }]
+  function lightTable(c, x0, y0, w, rows) {
+    const labW = 128, n = rows[0].vals.length, cw = (w - labW) / n, rh = 46, fs = n > 10 ? 16 : 19;
+    rows.forEach((row, r) => {
+      const y = y0 + r * rh;
+      c.fillStyle = LC.muted; c.font = `600 16px ${F_SANS}`; c.textAlign = "left"; c.textBaseline = "middle"; c.fillText(row.label, x0, y + rh / 2);
+      row.vals.forEach((v, i) => {
+        const x = x0 + labW + i * cw, tone = row.tone && row.tone[i];
+        if (row.box || tone) { c.fillStyle = tone ? tone[0] : "#fff"; rrect(c, x + 3, y + 5, cw - 6, rh - 10, 7); c.fill(); if (!tone) { c.strokeStyle = LC.line; c.lineWidth = 1.5; c.stroke(); } }
+        const empty = v === undefined || v === null || v === "";
+        c.fillStyle = tone ? tone[1] : empty ? "#B7C1BB" : row.color || LC.ink;
+        c.font = row.small ? `700 ${Math.min(14, fs - 3)}px ${F_SANS}` : `${row.bold ? 700 : 500} ${fs}px ${F_MONO}`; c.textAlign = "center";
+        c.fillText(empty ? "_" : String(v), x + cw / 2, y + rh / 2 + 1);
+      });
+    });
+    return rows.length * rh;
+  }
+  function snapFrame(title, sub, bodyH) {
+    const W = 1080, P = 36, HEAD = 84, H = HEAD + P + bodyH + 60, SCALE = 2;
+    const cv = document.createElement("canvas"); cv.width = W * SCALE; cv.height = H * SCALE;
+    const c = cv.getContext("2d"); c.scale(SCALE, SCALE); c.fillStyle = LC.bg; c.fillRect(0, 0, W, H);
+    c.fillStyle = LC.head; c.fillRect(0, 0, W, HEAD);
+    c.fillStyle = "#fff"; c.textBaseline = "middle"; c.textAlign = "left"; c.font = `400 34px ${F_DISP}`; c.fillText(title, P, HEAD / 2 + 2);
+    c.textAlign = "right"; c.font = `700 24px ${F_SANS}`; c.fillText(sub, W - P, HEAD / 2 + 2);
+    const now = new Date(); c.fillStyle = LC.muted; c.font = `400 16px ${F_SANS}`; c.textBaseline = "top";
+    c.textAlign = "left"; c.fillText("2.1.2 다양한 데이터의 디지털 표현 · 표본화 → 양자화 → 부호화", P, H - 40);
+    c.textAlign = "right"; c.fillText(`${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}`, W - P, H - 40); c.textAlign = "left";
+    return { cv, c, W, P, top: HEAD + P };
+  }
+  function drawSendSnap() {
+    const s = opSamples(), n = s.length, m = document.createElement("canvas").getContext("2d");
+    const cipher = s.map((_, i) => S.send.b[i] || "___").join(" ");
+    m.font = `700 26px ${F_MONO}`; const cLines = wrapText(m, cipher, 1080 - 72 - 36);
+    const chartH = 300, tableH = 4 * 46, cipherH = 26 + 12 + cLines.length * 36 + 30;
+    const f = snapFrame("소리 암호 작전 · ① 보내는 요원", `작전 ${S.op}번 · 간격 ${S.interval}초`, chartH + 22 + tableH + 22 + cipherH), { c, W, P } = f;
+    let y = f.top;
+    lightChart(c, P, y, W - P * 2, chartH, { wave: true, dots: s, labels: n <= 15 }); y += chartH + 22;
+    y += lightTable(c, P, y, W - P * 2, [
+      { label: "시간(초)", vals: s.map((p) => fmtT(p.t)), color: LC.muted },
+      { label: "표본값", vals: s.map((p) => p.v.toFixed(1)), color: LC.sample, bold: true },
+      { label: "① 정수", vals: s.map((_, i) => S.send.q[i]), box: true, bold: true },
+      { label: "② 이진수", vals: s.map((_, i) => S.send.b[i]), box: true, bold: true },
+    ]) + 22;
+    c.strokeStyle = LC.ink; c.lineWidth = 2; c.setLineDash([8, 6]); rrect(c, P, y, W - P * 2, cipherH, 12); c.stroke(); c.setLineDash([]);
+    c.textBaseline = "top"; c.textAlign = "left"; c.fillStyle = LC.muted; c.font = `500 18px ${F_SANS}`;
+    c.fillText(`보낸 암호문 · 3비트 × ${n}개 = ${n * 3}비트${S.send.cipher ? "" : "  (아직 [암호문 만들기] 전)"}`, P + 18, y + 16);
+    c.fillStyle = LC.digital; c.font = `700 26px ${F_MONO}`; cLines.forEach((ln, j) => c.fillText(ln, P + 18, y + 16 + 26 + 12 + j * 36));
+    return f.cv;
+  }
+  function recvDiagCells() {
+    const s = opSamples(), { groups } = parseRaw();
+    return s.map((p, i) => { const truth = quant3(p.v), g = groups[i], d = S.recv.dec[i];
+      if (g === undefined || d === undefined) return ["빈칸", LC.warn];
+      if (d !== parseInt(g, 2)) return ["해독 실수", LC.bad];
+      if (d !== truth) return ["보낸 값 다름", LC.warn];
+      return ["✓ 일치", LC.ok]; });
+  }
+  function drawRecvSnap() {
+    const s = opSamples(), { groups } = parseRaw(), rev = S.recv.revealed, dg = rev ? recvDiagCells() : null;
+    const chartH = 300, rows = [
+      { label: "시간(초)", vals: s.map((p) => fmtT(p.t)), color: LC.muted },
+      { label: "받은 3비트", vals: s.map((_, i) => groups[i]), bold: true },
+      { label: "해독한 정수", vals: s.map((_, i) => S.recv.dec[i]), box: true, bold: true, color: LC.digital },
+    ];
+    if (rev) rows.push({ label: "진단", vals: dg.map((d) => d[0]), tone: dg.map((d) => d[1]), small: true });
+    const resH = 26 + 12 + 40 + 30, f = snapFrame("소리 암호 작전 · ② 받는 요원", `작전 ${S.op}번 · 간격 ${S.interval}초`, chartH + 22 + rows.length * 46 + 22 + resH), { c, W, P } = f;
+    let y = f.top;
+    lightChart(c, P, y, W - P * 2, chartH, { wave: rev, waveAlpha: .85, stair: s.map((p, i) => ({ t: p.t, v: S.recv.dec[i] })) });
+    c.textBaseline = "middle"; c.textAlign = "right"; c.font = `600 15px ${F_SANS}`;
+    c.fillStyle = LC.digital; c.fillText("■ 내가 되살린 소리", W - P - 18, y + 22); if (rev) { c.fillStyle = LC.analog; c.fillText("■ 원래 소리", W - P - 18, y + 44); }
+    y += chartH + 22;
+    y += lightTable(c, P, y, W - P * 2, rows) + 22;
+    c.fillStyle = LC.panel; rrect(c, P, y, W - P * 2, resH, 12); c.fill();
+    c.textBaseline = "top"; c.textAlign = "left"; c.fillStyle = LC.muted; c.font = `500 18px ${F_SANS}`;
+    const bits = parseRaw().bits.length; c.fillText(`받은 비트 ${bits} / ${s.length * 3}`, P + 18, y + 16);
+    c.fillStyle = LC.ink; c.font = `700 30px ${F_SANS}`;
+    if (rev) { const st = S.recv.stars; c.fillText(`복원률 ${S.recv.rate}%  `, P + 18, y + 16 + 26 + 10); const w0 = c.measureText(`복원률 ${S.recv.rate}%  `).width; c.fillStyle = LC.sample; c.fillText("★".repeat(st) + "☆".repeat(3 - st), P + 18 + w0, y + 16 + 26 + 10); }
+    else { c.fillStyle = LC.muted; c.font = `600 24px ${F_SANS}`; c.fillText("아직 원본 공개 전 · [원본 공개하고 채점]을 누르면 복원률이 나와요", P + 18, y + 16 + 26 + 14); }
+    return f.cv;
+  }
+  function copyCanvas(make, id, okText, note) {
+    const st = $(id + "Status"), fig = $(id + "Fig");
+    const show = (text, kind) => { st.className = "status " + kind; st.textContent = text; st.hidden = false; };
+    const failed = () => { try { $(id + "Img").src = make().toDataURL("image/png"); fig.hidden = false; } catch (e) {} show("버튼 복사가 막혀 있어요. 아래 그림을 오른쪽 클릭해서 복사해 주세요.", "warn"); };
+    fig.hidden = true;
+    try {
+      if (!navigator.clipboard || !window.ClipboardItem) { failed(); return; }
+      const blob = new Promise((res, rej) => { try { make().toBlob((b) => (b ? res(b) : rej(new Error("toBlob"))), "image/png"); } catch (e) { rej(e); } });
+      navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]).then(() => show(okText + (note ? " " + note : ""), note ? "warn" : "ok"), failed);
+    } catch (e) { failed(); }
+  }
+  $("sendSnapBtn").addEventListener("click", () => {
+    const n = opSamples().length, blanks = opSamples().filter((_, i) => !S.send.b[i] || S.send.b[i].length !== 3).length;
+    copyCanvas(drawSendSnap, "sendSnap", "보낸 결과를 복사했어요. 붙여 넣을 곳을 누르고 Ctrl+V 하세요.", blanks ? `(이진수 ${blanks}칸이 아직 비어 있어요)` : "");
+  });
+  $("recvSnapBtn").addEventListener("click", () => {
+    copyCanvas(drawRecvSnap, "recvSnap", "받은 결과를 복사했어요. 붙여 넣을 곳을 누르고 Ctrl+V 하세요.", !parseRaw().bits.length ? "(아직 받은 암호문이 없어요)" : !S.recv.revealed ? "(원본 공개 전이라 복원률은 빠져 있어요)" : "");
   });
 
   // ---------- stages ----------
