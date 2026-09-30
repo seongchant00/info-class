@@ -282,7 +282,7 @@
         <div class="stat full"><span>해상도</span><b id="stRes"></b></div>
         <div class="stat"><span>1픽셀</span><b id="stBpp"></b></div>
         <div class="stat"><span>색 수</span><b id="stCols"></b></div>
-        <div class="stat full"><span>데이터 크기 = 픽셀 수 × 비트 수</span><b id="stSize"></b><div class="meter"><div id="meterFill"></div></div><span id="stKB" style="margin-top:4px"></span></div>
+        <div class="stat full"><span>필요한 0과 1 = 픽셀 수 × 픽셀 하나의 비트 수</span><b id="stSize"></b><div class="meter"><div id="meterFill"></div></div><span id="stKB" style="margin-top:4px"></span></div>
         <div class="stat full" style="display:flex;flex-direction:column;gap:6px">
           <button class="btn" type="button" id="recLow">지금 설정을 <b>낮은 해상도</b>로 기록</button>
           <button class="btn" type="button" id="recHigh">지금 설정을 <b>높은 해상도</b>로 기록</button>
@@ -336,7 +336,7 @@
     <textarea id="copyArea" readonly hidden aria-label="복사할 결과"></textarea>
 
     <ol class="questions">
-      <li>가로·세로 픽셀 수를 각각 <b>두 배</b>로 늘리면 데이터 크기는 몇 배가 될까요?</li>
+      <li>가로·세로 픽셀 수를 각각 <b>두 배</b>로 늘리면 픽셀 수는 몇 배가 될까요? 그림은 어떻게 달라지나요?</li>
       <li>2가지 색은 1비트, 9가지 색은 왜 <b>4비트</b>가 필요할까요? 3비트로는 몇 가지 색까지 될까요?</li>
       <li>지난 시간 소리의 <b>표본화 간격</b>, <b>양자화 비트 수</b>는 이미지의 무엇과 닮았나요?</li>
     </ol>
@@ -673,7 +673,8 @@
       for (let k = 1; k < pc.width; k++) { x.beginPath(); x.moveTo(Math.round(k * s) + .5, 0); x.lineTo(Math.round(k * s) + .5, h); x.stroke(); }
       for (let k = 1; k < pc.height; k++) { x.beginPath(); x.moveTo(0, Math.round(k * s) + .5); x.lineTo(w, Math.round(k * s) + .5); x.stroke(); } }
   }
-  const sizeOf = (W, H, b) => { const bits = W * H * b, bytes = bits / 8, kb = bytes / 1024; return { bits, bytes, kbTxt: kb < 0.1 ? "0.1 KB 미만" : kb < 1024 ? kb.toFixed(1) + " KB" : (kb / 1024).toFixed(1) + " MB" }; };
+  const pctTxt = (p) => (p < 0.1 ? "0.1% 미만" : p.toFixed(1) + "%");
+  const sizeOf = (W, H, b) => { const bits = W * H * b, full = (S.lab.natW * S.lab.natH * 24) || bits; return { bits, kbTxt: "원본의 " + pctTxt(bits / full * 100) }; };
   function renderLab() {
     if (!S.lab.src) return;
     const view = $("view"), w = view.clientWidth; if (!w) return;
@@ -684,7 +685,7 @@
     $("stSize").textContent = `${fmt(W * H)} × ${b} = ${fmt(sz.bits)}비트`;
     const pct = sz.bits / full * 100;
     $("meterFill").style.width = Math.max(1, pct) + "%";
-    $("stKB").textContent = `= ${fmt(sz.bytes)}바이트 ≈ ${sz.kbTxt} · 원본의 ${pct < 0.1 ? "0.1% 미만" : pct.toFixed(1) + "%"}`;
+    $("stKB").textContent = `원본 사진(24비트)과 비교하면 ${pctTxt(pct)}`;
   }
   seg($("resSeg"), RES, () => S.lab.res, (v) => { S.lab.res = v === "orig" ? "orig" : +v; renderLab(); });
   seg($("colSeg"), COLS.map(([b, l]) => [b, l]), () => S.lab.bpp, (v) => { S.lab.bpp = +v; renderLab(); });
@@ -789,7 +790,7 @@
     const cx = gx + D + 30; label("내가 적은 이진수", cx, top);
     c.font = `600 22px ${F_MONO}`;
     for (let r = 0; r < n; r++) { const txt = S.bw.rows[r] || "—", ok = rowOkBW(r); c.fillStyle = S.bw.rows[r] ? CARD.ink : CARD.muted; c.fillText(txt, cx, top + 34 + r * 30); if (S.bw.rows[r]) { c.fillStyle = ok ? CARD.ok : CARD.bad; c.fillText(ok ? "✓" : "✗", cx + 150, top + 34 + r * 30); } }
-    const sx = cx + 200, stats = [["밑그림", d.tpl], ["밑그림 비교", d.cmp], ["이진수 점검", d.code], ["데이터 크기", d.size], ["고수 도전 · 9색 4비트", d.expert]];
+    const sx = cx + 200, stats = [["밑그림", d.tpl], ["밑그림 비교", d.cmp], ["이진수 점검", d.code], ["필요한 0과 1", d.size], ["고수 도전 · 9색 4비트", d.expert]];
     stats.forEach(([k, v], i) => { label(k, sx, top + i * 58); c.fillStyle = CARD.ink; c.font = `700 23px ${F_SANS}`; c.fillText(v, sx, top + i * 58 + 24); });
 
     // 작전 2

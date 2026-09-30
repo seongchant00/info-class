@@ -230,7 +230,7 @@
     <div>
       <div class="eyebrow">중학교 정보 · II-1-② 다양한 데이터의 디지털 표현 · 소리 · 영상</div>
       <h1>소리 암호 <span class="tag">작전</span></h1>
-      <p class="lead">소리를 0과 1로만 바꿔 짝에게 보내고, 받은 0과 1로 소리를 되살립니다. 두 번째 작전에서는 그림을 1초에 여러 장 넘기는 영상을 디지털로 바꿔 보고, 영상의 크기를 계산합니다.</p>
+      <p class="lead">소리를 0과 1로만 바꿔 짝에게 보내고, 받은 0과 1로 소리를 되살립니다. 두 번째 작전에서는 그림을 1초에 여러 장 넘기는 영상을 디지털로 바꿔 보고, 무엇을 줄이면 무엇을 잃는지 알아봅니다.</p>
     </div>
     <div class="opcode">
       <label for="op">작전 번호</label>
@@ -240,7 +240,7 @@
 
   <nav class="stages" role="tablist" aria-label="작전">
     <button class="stage-tab" role="tab" data-stage="1" id="tabS1"><span class="k">작전 1 · 짝 활동</span><span class="t">비밀 소리 전송</span><span class="d">표본화 · 양자화 · 부호화 · 해독</span></button>
-    <button class="stage-tab" role="tab" data-stage="2" id="tabS2"><span class="k">작전 2 · 개인 도전</span><span class="t">영상 암호</span><span class="d">FPS · 해상도 · 영상 크기 계산</span></button>
+    <button class="stage-tab" role="tab" data-stage="2" id="tabS2"><span class="k">작전 2 · 개인 도전</span><span class="t">영상 암호</span><span class="d">FPS · 해상도 · 색 비트</span></button>
     <button class="stage-tab" role="tab" data-stage="3" id="tabS3"><span class="k">작전 보고</span><span class="t">결과 정리</span><span class="d">결과 카드 · 통합학습창 제출</span></button>
   </nav>
 
@@ -264,7 +264,6 @@
         <div class="hint"><b>① 양자화</b> 소수 첫째 자리가 5 이상이면 올리고 4 이하면 버린다 (3.5 → 4, 3.4 → 3) · <b>② 부호화</b> 3비트는 왼쪽부터 4·2·1 자리 (5 = 4+1 → 101)</div>
         <div class="row">
           <button class="btn" type="button" id="selfCheck">스스로 점검</button>
-          <span class="status info" id="checkLeft">점검 기회 2번</span>
           <button class="btn go" type="button" id="makeCipher">암호문 만들기</button>
           <span class="status" id="sendStatus" hidden></span>
         </div>
@@ -322,7 +321,7 @@
   <!-- ================= STAGE 2 · 영상 ================= -->
   <section class="panel" id="stage2" role="tabpanel" aria-labelledby="tabS2" hidden>
     <div class="head-row"><h2>작전 2 · 영상 암호</h2><span class="status info" id="vSet"></span></div>
-    <div class="brief"><span class="stamp">영상</span><p>영상은 <b>그림(프레임)을 1초에 여러 장</b> 빠르게 넘겨서 움직이는 것처럼 보이게 한다. 1초에 몇 장을 찍는지가 <b>FPS</b>다. 왼쪽 원래 움직임과 비교하며 FPS · 해상도 · 색을 바꿔 보고, 영상의 크기를 계산하라.</p></div>
+    <div class="brief"><span class="stamp">영상</span><p>영상은 <b>그림(프레임)을 1초에 여러 장</b> 빠르게 넘겨서 움직이는 것처럼 보이게 한다. 1초에 몇 장을 찍는지가 <b>FPS</b>다. 왼쪽 원래 움직임과 비교하며 FPS · 해상도 · 색을 바꿔 보고, 무엇을 줄이면 무엇을 잃는지 찾아라.</p></div>
     <div class="vid-grid">
       <figure class="vid"><figcaption>원래 움직임 (아날로그)</figcaption><canvas class="vcanvas" id="vOrig" role="img" aria-label="끊김 없이 움직이는 공"></canvas></figure>
       <figure class="vid"><figcaption id="vCap">디지털 영상</figcaption><canvas class="vcanvas pix" id="vDig" role="img" aria-label="설정한 FPS와 해상도로 찍은 영상"></canvas></figure>
@@ -345,13 +344,13 @@
     </div>
 
     <div class="vq">
-      <h3>② 영상 크기 계산 · 지금 설정으로 10초 <span class="hintline" style="font-weight:400">(어떤 장면이든 계산 방법은 같아요)</span></h3>
-      <div class="calc" id="vCalc"></div>
+      <h3>② 줄여 보기 · 무엇을 줄이면 무엇을 잃을까?</h3>
+      <p class="hintline" style="margin:0">위에서 하나씩 직접 낮춰 보며 확인하세요. 사진 장 수, 한 장의 픽셀 수, 픽셀 하나를 나타내는 이진수 자릿수를 떠올려 보세요.</p>
+      <div class="concl" id="vCut"></div>
       <div class="row">
-        <button class="btn primary" type="button" id="vCheck">계산 점검</button>
+        <button class="btn primary" type="button" id="vCheck">점검</button>
         <span class="status" id="vCalcStatus" hidden></span>
       </div>
-      <p class="hint" id="vHD" hidden style="margin:0"></p>
     </div>
 
     <div class="vq">
@@ -376,7 +375,7 @@
     <div class="row">
       <div><label class="lbl" for="stuNo">학번</label><input class="txt" id="stuNo" type="text" inputmode="numeric" maxlength="6" placeholder="10312" autocomplete="off"></div>
       <div><label class="lbl" for="stuName">이름</label><input class="txt" id="stuName" type="text" maxlength="10" placeholder="홍길동" autocomplete="off"></div>
-      <div style="flex:1;min-width:220px"><label class="lbl" for="stuNote">한 줄 소감 · 오늘 알게 된 것</label><input class="txt" id="stuNote" type="text" maxlength="60" placeholder="예) 비트를 많이 쓰면 소리가 정확해지지만 용량이 커진다" autocomplete="off" style="width:100%"></div>
+      <div style="flex:1;min-width:220px"><label class="lbl" for="stuNote">한 줄 소감 · 오늘 알게 된 것</label><input class="txt" id="stuNote" type="text" maxlength="60" placeholder="예) 비트를 많이 쓰면 소리가 정확해지지만 0과 1이 더 많이 필요하다" autocomplete="off" style="width:100%"></div>
     </div>
     <p class="hint" style="margin:0">학번·이름은 이 화면에만 보이고 <b>어디에도 저장되지 않습니다.</b> 새로고침하면 지워져요.</p>
 
@@ -387,7 +386,7 @@
         <div class="rc-cell"><span>① 보내는 요원 · 보낸 암호문</span><b id="rcSent" class="mono"></b></div>
         <div class="rc-cell"><span>② 받는 요원 · 되살린 결과</span><b id="rcRecv"></b></div>
         <div class="rc-cell"><span>작전 2 · 영상 관찰</span><b id="rcQuiz"></b></div>
-        <div class="rc-cell"><span>영상 크기 계산</span><b id="rcRule"></b></div>
+        <div class="rc-cell"><span>영상 줄여 보기</span><b id="rcRule"></b></div>
         <div class="rc-cell"><span>소리와 영상 연결</span><b id="rcExpert"></b></div>
       </div>
       <div class="rc-note" id="rcNote"></div>
@@ -418,7 +417,7 @@
     <ol class="questions">
       <li>작전 1에서 소리가 어긋났다면 어디서 틀렸나요? 양자화 · 부호화 · 쪽지 옮기기 · 해독 중에서 골라 보세요.</li>
       <li>보내는 쪽과 받는 쪽이 <b>간격을 다르게</b> 알고 있었다면 무슨 일이 생길까요?</li>
-      <li>10초 영상이 너무 크다면 <b>FPS · 해상도 · 색 비트</b> 중 무엇을 줄이겠어요? 그러면 무엇을 잃게 될까요?</li>
+      <li>영상에 쓰는 0과 1을 줄여야 한다면 <b>FPS · 해상도 · 색 비트</b> 중 무엇을 줄이겠어요? 그러면 무엇을 잃게 될까요?</li>
     </ol>
     <div class="mb">🔌 <b>마이크로비트 연결</b> · <code>소리 크기</code> 블록은 <b>0~255</b> 사이 값을 줍니다. 크기를 몇 단계로 나눈 걸까요? 그러면 몇 비트일까요?</div>
   </section>
@@ -517,10 +516,9 @@
     updateChecks();
   }
   function renderSender() { const f = frame($("cSend")); drawWave(f, opWave); const s = opSamples(); drawDots(f, s, s.length <= 15); }
-  function updateChecks() { $("checkLeft").textContent = `점검 기회 ${S.send.checks}번`; $("selfCheck").disabled = S.send.checks <= 0; }
+  function updateChecks() {}
   function hideCipher() { $("cipherBox").hidden = true; $("sendStatus").hidden = true; S.send.cipher = ""; }
   $("selfCheck").addEventListener("click", () => {
-    if (S.send.checks <= 0) return;
     const s = opSamples(); let right = 0, total = s.length * 2;
     s.forEach((p, i) => {
       const qi = $("sq" + i), bi = $("sb" + i); qi.classList.remove("ok", "bad"); bi.classList.remove("ok", "bad");
@@ -528,10 +526,9 @@
       if (S.send.q[i] !== undefined) { if (S.send.q[i] === cq) { qi.classList.add("ok"); right++; } else qi.classList.add("bad"); }
       if (S.send.b[i]) { if (S.send.b[i] === toBin(cq)) { bi.classList.add("ok"); right++; } else bi.classList.add("bad"); }
     });
-    S.send.checks--; updateChecks();
     const st = $("sendStatus"); st.hidden = false;
     st.className = right === total ? "status ok" : "status warn";
-    st.textContent = right === total ? "완벽해요! 암호문을 만들어 보내세요." : `${total}칸 중 ${right}칸 통과. 빨간 칸을 다시 보세요.`;
+    st.textContent = right === total ? "완벽해요! 암호문을 만들어 보내세요." : `${total}칸 중 ${right}칸 통과. 빨간 칸을 고치고 다시 점검해 보세요.`;
   });
   $("makeCipher").addEventListener("click", () => {
     const s = opSamples(); const st = $("sendStatus"); st.hidden = false;
@@ -636,7 +633,7 @@
   // ================= STAGE 2 · 영상 암호 =================
   const PAL9 = [[17,17,17],[255,255,255],[229,57,53],[251,140,0],[253,216,53],[67,160,71],[30,136,229],[40,53,147],[142,36,170]]; // 교과서 9색 (검·흰·빨·주·노·초·파·남·보)
   const V_FPS = [1, 5, 12, 30], V_RES = [[16, 9], [32, 18], [64, 36], [128, 72]], V_COL = [[1, "흑백 · 1비트"], [4, "9색 · 4비트"], [8, "256색 · 8비트"], [24, "1600만 색 · 24비트"]];
-  const V = { scene: "ball", fps: 12, res: 1, bpp: 4, speed: 1, playing: true, t: 0, last: 0, raf: 0, frameKey: "", smooth: {}, calc: ["", "", ""], marks: [null, null, null], calcLog: null, concl: [], conclOk: null };
+  const V = { scene: "ball", fps: 12, res: 1, bpp: 4, speed: 1, playing: true, t: 0, last: 0, raf: 0, frameKey: "", smooth: {}, cut: [[null, null], [null, null], [null, null]], marks: [null, null, null], cutLog: null, concl: [], conclOk: null };
   const fmtN = (n) => Math.round(n).toLocaleString("ko-KR");
   const vDims = () => V_RES[V.res];
   // ---------- 장면 (사이트 안에서 그리는 '아날로그' 움직임, t초의 모습) ----------
@@ -735,26 +732,21 @@
   function renderStrip() {
     const [W, H] = vDims(), box = $("strip"); box.innerHTML = "";
     for (let i = 0; i < V.fps; i++) { const f = digitalFrame(i / V.fps); f.className = "thumb"; f.title = `${i + 1}번째 장`; box.appendChild(f); }
-    $("stripLbl").innerHTML = `0초~1초 동안 찍은 프레임 = <b>${V.fps}장</b> · 한 장 = ${W} × ${H} = ${fmtN(W * H)}픽셀`;
+    $("stripLbl").innerHTML = `0초~1초 동안 찍은 프레임 = <b>${V.fps}장</b> · 한 장 = ${W} × ${H} = ${fmtN(W * H)}픽셀 · 픽셀 하나 = <b>${V.bpp}자리 이진수</b>`;
   }
   function settingText() { const [W, H] = vDims(); return `${W}×${H} · ${V.bpp}비트 · ${V.fps} FPS`; }
-  function calcTruth() { const [W, H] = vDims(), f = W * H * V.bpp, s = f * V.fps; return [f, s, s * 10]; }
-  const parseNum = (v) => { const d = String(v || "").replace(/[^0-9]/g, ""); return d ? parseInt(d, 10) : null; };
-  function renderCalc() {
-    const [W, H] = vDims(), rows = [
-      ["1프레임", `${W} × ${H} × ${V.bpp}비트`],
-      ["1초", `1프레임 × ${V.fps} FPS`],
-      ["10초", `1초 × 10`],
-    ];
-    $("vCalc").innerHTML = rows.map(([k, f], i) => `<div class="calc-row"><span class="k">${k}</span><span class="f">${f} =</span><input id="vc${i}" type="text" inputmode="numeric" autocomplete="off" value="${V.calc[i]}" aria-label="${k} 비트 수"><span class="u">비트</span><span class="mark" id="vm${i}"></span></div>`).join("");
-    rows.forEach((_, i) => $("vc" + i).addEventListener("input", (e) => { V.calc[i] = e.target.value; V.marks[i] = null; syncCalcMarks(); $("vCalcStatus").hidden = true; }));
-    syncCalcMarks();
+  // ② 줄여 보기: 무엇을 낮추면 0과 1의 양은? 무엇을 잃나?
+  const CUT_ROWS = ["FPS를 낮추면", "해상도를 낮추면", "색 비트를 낮추면"], CUT_KNOB = ["FPS", "해상도", "색 비트"];
+  const CUT_AMT = ["늘어나요", "줄어들어요"], CUT_LOSE = ["색이 단순해져요", "움직임이 뚝뚝 끊겨요", "그림이 거칠어져요(계단)"], CUT_SHORT = ["색 단순", "끊김", "거칠어짐"];
+  const CUT_ANS = [[1, 1], [1, 2], [1, 0]];
+  function renderCut() {
+    const btns = (i, k, opts) => opts.map((o, j) => `<button type="button" data-r="${i}" data-k="${k}" data-o="${j}" aria-pressed="${V.cut[i][k] === j}">${o}</button>`).join("");
+    $("vCut").innerHTML = CUT_ROWS.map((q, i) => { const m = V.marks[i]; return `<div class="concl-row"><span><b>${q}</b> <span class="mark ${m === true ? "ok" : m === false ? "bad" : ""}" style="font-weight:700;color:${m === true ? "var(--ok)" : m === false ? "var(--bad)" : "inherit"}">${m === true ? "✓" : m === false ? "✗" : ""}</span></span><div class="row" style="gap:8px 14px"><span class="hintline">0과 1의 양</span><div class="seg" role="group" aria-label="${q} 0과 1의 양">${btns(i, 0, CUT_AMT)}</div><span class="hintline">잃는 것</span><div class="seg" role="group" aria-label="${q} 잃는 것">${btns(i, 1, CUT_LOSE)}</div></div></div>`; }).join("");
   }
-  function syncCalcMarks() { V.marks.forEach((m, i) => { const inp = $("vc" + i), mk = $("vm" + i); if (!inp) return; inp.classList.toggle("ok", m === true); inp.classList.toggle("bad", m === false); mk.className = "mark" + (m === true ? " ok" : m === false ? " bad" : ""); mk.textContent = m === true ? "✓" : m === false ? "✗" : ""; }); }
+  $("vCut").addEventListener("click", (e) => { const b = e.target.closest("button[data-r]"); if (!b) return; V.cut[+b.dataset.r][+b.dataset.k] = +b.dataset.o; V.marks[+b.dataset.r] = null; $("vCalcStatus").hidden = true; renderCut(); });
   function settingsChanged() {
-    V.marks = [null, null, null]; $("vCalcStatus").hidden = true; $("vHD").hidden = true;
     $("vSet").textContent = settingText(); $("vCap").textContent = `디지털 영상 · ${settingText()}`;
-    renderCalc(); renderStrip(); drawVideo(true); updateSummary();
+    renderStrip(); drawVideo(true); updateSummary();
   }
   seg($("vFps"), V_FPS.map((f) => [f, f + " FPS"]), () => V.fps, (v) => { V.fps = +v; settingsChanged(); });
   seg($("vRes"), V_RES.map(([w, h], i) => [i, `${w}×${h}`]), () => V.res, (v) => { V.res = +v; settingsChanged(); });
@@ -765,23 +757,19 @@
   const smoothText = () => { const e = Object.keys(SCENES).filter((k) => V.smooth[k]).map((k) => `${SCENES[k].name} ${V.smooth[k]}`); return e.length ? e.join(" · ") + " FPS부터 부드러움" : ""; };
   $("vPlay").addEventListener("click", (e) => { V.playing = !V.playing; e.currentTarget.textContent = V.playing ? "⏸ 멈춤" : "▶ 재생"; if (V.playing) startLoop(); });
   $("vCheck").addEventListener("click", () => {
-    const truth = calcTruth(), st = $("vCalcStatus"); st.hidden = false;
-    if (V.calc.every((x) => !parseNum(x))) { st.className = "status bad"; st.textContent = "먼저 세 칸을 계산해서 적어 주세요."; return; }
-    V.marks = truth.map((t, i) => (parseNum(V.calc[i]) === null ? null : parseNum(V.calc[i]) === t));
-    syncCalcMarks();
-    const right = V.marks.filter((m) => m === true).length, [W, H] = vDims();
-    V.calcLog = { set: settingText(), val: parseNum(V.calc[2]), ok: right === 3 };
-    if (right === 3) {
-      st.className = "status ok"; st.textContent = `모두 정확! 10초 = ${fmtN(truth[2])}비트 = 약 ${(truth[2] / 8 / 1024).toFixed(1)} KB`;
-      const hd = 1920 * 1080 * 24 * 30 * 10; $("vHD").hidden = false;
-      $("vHD").innerHTML = `비교 · 실제 HD 영상(1920×1080, 24비트, 30 FPS) 10초 = <b>${fmtN(hd)}비트 ≈ 1.9 GB</b>. 너무 커서 실제 영상 파일(MP4 등)은 <b>압축</b>해서 저장해요.`;
-    } else { st.className = "status warn"; st.textContent = `3칸 중 ${right}칸 정확. ✗ 칸의 곱셈을 다시 해 보세요. (계산기를 써도 돼요)`; }
+    const st = $("vCalcStatus"); st.hidden = false;
+    if (V.cut.some((r) => r[0] === null || r[1] === null)) { st.className = "status bad"; st.textContent = "세 줄 모두 '0과 1의 양'과 '잃는 것'을 골라 주세요."; return; }
+    V.marks = V.cut.map((r, i) => r[0] === CUT_ANS[i][0] && r[1] === CUT_ANS[i][1]);
+    const right = V.marks.filter(Boolean).length; V.cutLog = { ok: right === 3 };
+    renderCut();
+    if (right === 3) { st.className = "status ok"; st.textContent = "모두 정확! 무엇을 낮춰도 0과 1은 줄어들지만, 낮춘 것에 따라 잃는 것이 달라요."; }
+    else { st.className = "status warn"; st.textContent = `세 줄 중 ${right}줄 정확. ✗ 줄은 위에서 그 설정만 직접 낮춰 보며 다시 확인해 보세요.`; }
     updateSummary();
   });
   const V_CONCL = [
     { q: "FPS(1초에 몇 장 찍나)는 소리의 무엇과 닮았을까?", opts: ["표본화 (얼마나 자주 재나)", "양자화 (크기를 몇 단계로)"], ans: 0 },
     { q: "색 비트 수는 소리의 무엇과 닮았을까?", opts: ["표본화 (얼마나 자주 재나)", "양자화 (크기를 몇 단계로)"], ans: 1 },
-    { q: "FPS를 2배로 올리면 영상 크기는?", opts: ["2배", "4배", "그대로"], ans: 0 },
+    { q: "소리를 3비트로 나누면 8단계였다. 색을 4비트로 나타내면 최대 몇 가지 색?", opts: ["8가지", "12가지", "16가지"], ans: 2 },
   ];
   function renderVConcl() {
     $("vConcl").innerHTML = V_CONCL.map((c, i) => `<div class="concl-row"><span>${i + 1}. ${c.q}</span><div class="seg" role="group" aria-label="${c.q}">${c.opts.map((o, j) => `<button type="button" data-q="${i}" data-o="${j}" aria-pressed="${V.concl[i] === j}">${o}</button>`).join("")}</div></div>`).join("");
@@ -792,11 +780,11 @@
     if (V_CONCL.some((_, i) => V.concl[i] === undefined)) { st.className = "status bad"; st.textContent = "세 문장을 모두 골라 주세요."; return; }
     const right = V_CONCL.filter((c, i) => V.concl[i] === c.ans).length; V.conclOk = right === 3;
     st.className = V.conclOk ? "status ok" : "status warn";
-    st.textContent = V.conclOk ? "정확해요! 자주 찍을수록(FPS↑) 부드럽고, 색 비트가 많을수록 섬세하지만 그만큼 크기가 커져요." : `세 문장 중 ${right}개 맞았어요. 소리에서 '얼마나 자주'와 '몇 단계로'를 떠올려 보세요.`;
+    st.textContent = V.conclOk ? "정확해요! 자주 찍을수록(FPS↑) 부드럽고, 비트가 1개 늘 때마다 나타낼 수 있는 가짓수는 2배가 돼요. 대신 0과 1이 더 많이 필요해요." : `세 문장 중 ${right}개 맞았어요. 소리에서 '얼마나 자주'와 '몇 단계로'를 떠올려 보세요.`;
     updateSummary();
   });
   function renderStage2() { $("vSet").textContent = settingText(); $("vCap").textContent = `디지털 영상 · ${settingText()}`; if (!$("strip").children.length) renderStrip(); drawVideo(true); startLoop(); }
-  renderCalc(); renderVConcl();
+  renderCut(); renderVConcl();
 
   // ================= STAGE 3: 결과 카드 =================
   function summaryData() {
@@ -811,7 +799,7 @@
       recvDiag,
       roles: `보내기 ${snt ? "✓" : "—"} · 받기 ${rcv ? "✓" : "—"}`,
       quiz: smoothText() || "아직 고르지 않음",
-      rule: V.calcLog ? `${V.calcLog.set} · 10초 = ${V.calcLog.val !== null ? fmtN(V.calcLog.val) : "?"}비트 ${V.calcLog.ok ? "✓" : "✗"}` : "아직 점검 전",
+      rule: V.cutLog ? CUT_KNOB.map((k, i) => `${k}↓ ${V.cut[i][1] !== null ? CUT_SHORT[V.cut[i][1]] : "?"} ${V.marks[i] === true ? "✓" : V.marks[i] === false ? "✗" : ""}`.trim().replace(/ /g, "\u00a0")).join(" · ") : "아직 점검 전",
       expert: V.conclOk === true ? "3문항 모두 정확 ✓" : V.conclOk === false ? "다시 확인 필요" : "아직 확인 전",
       note: ($("stuNote").value || "").trim(),
     };
@@ -851,7 +839,7 @@
     const cells = [
       ["① 보내는 요원 · 보낸 암호문" + (d.sentOp ? "  |  " + d.sentOp : ""), d.sent, !!S.log.sent],
       ["② 받는 요원 · 되살린 결과" + (d.recvOp ? "  |  " + d.recvOp : ""), d.recv + (d.recvDiag ? "\n" + d.recvDiag : ""), false],
-      ["작전 2 · 영상 관찰", d.quiz, false], ["작전 2 · 영상 크기 계산", d.rule, false],
+      ["작전 2 · 영상 관찰", d.quiz, false], ["작전 2 · 영상 줄여 보기", d.rule, false],
       ["소리와 영상 연결", d.expert, false], ["작전 1 · 역할 완수", d.roles, false],
     ];
     const m = document.createElement("canvas").getContext("2d");
@@ -930,7 +918,7 @@ const __dl = (blob, name) => { const no = (String(name).match(/\d{3,6}/) || [""]
   });
   $("copyBtn").addEventListener("click", () => {
     const d = summaryData();
-    const text = `[소리 암호 작전] ${d.who}\n① 보낸 암호문${d.sentOp ? " (" + d.sentOp + ")" : ""}: ${d.sent}\n② 되살린 결과${d.recvOp ? " (" + d.recvOp + ")" : ""}: ${d.recv}${d.recvDiag ? " · " + d.recvDiag : ""}\n영상 관찰: ${d.quiz} | 영상 크기: ${d.rule} | 소리와 영상 연결: ${d.expert}\n소감: ${d.note || "-"}`;
+    const text = `[소리 암호 작전] ${d.who}\n① 보낸 암호문${d.sentOp ? " (" + d.sentOp + ")" : ""}: ${d.sent}\n② 되살린 결과${d.recvOp ? " (" + d.recvOp + ")" : ""}: ${d.recv}${d.recvDiag ? " · " + d.recvDiag : ""}\n영상 관찰: ${d.quiz} | 영상 줄여 보기: ${d.rule} | 소리와 영상 연결: ${d.expert}\n소감: ${d.note || "-"}`;
     const done = () => { const c = $("copied"); c.textContent = "복사했어요"; c.hidden = false; setTimeout(() => (c.hidden = true), 1800); };
     const fallback = () => { const ta = $("copyArea"); ta.hidden = false; ta.value = text; ta.focus(); ta.select(); const c = $("copied"); c.hidden = false; c.textContent = "선택된 글자를 복사하세요 (Ctrl+C)"; };
     try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
@@ -1041,19 +1029,17 @@ const __dl = (blob, name) => { const no = (String(name).match(/\d{3,6}/) || [""]
     const f = snapFrame("소리 암호 작전 · 작전 2 영상", `${SCENES[V.scene].name} · ${settingText()}`, stripH + 22 + calcH + 22 + infoH, "2.1.2 다양한 데이터의 디지털 표현 · 영상 = 프레임 × FPS"), { c, W, P } = f;
     let y = f.top; const [RW, RH] = vDims();
     c.textBaseline = "top"; c.textAlign = "left"; c.fillStyle = LC.muted; c.font = `600 18px ${F_SANS}`;
-    c.fillText(`0초~1초 동안 찍은 프레임 = ${V.fps}장 · 한 장 = ${RW} × ${RH} = ${fmtN(RW * RH)}픽셀`, P, y); y += 30;
+    c.fillText(`0초~1초 동안 찍은 프레임 = ${V.fps}장 · 한 장 = ${RW} × ${RH} = ${fmtN(RW * RH)}픽셀 · 픽셀 하나 = ${V.bpp}자리 이진수`, P, y); y += 30;
     c.imageSmoothingEnabled = false;
     for (let i = 0; i < V.fps; i++) { const fr = digitalFrame(i / V.fps), x = P + (i % m) * (tw + gap), yy = y + Math.floor(i / m) * (th + gap); c.drawImage(fr, x, yy, tw, th); c.strokeStyle = LC.line; c.lineWidth = 1; c.strokeRect(x + .5, yy + .5, tw - 1, th - 1); }
     c.imageSmoothingEnabled = true; y += rowsN * (th + gap) + 22;
-    const truthRows = [["1프레임", `${RW} × ${RH} × ${V.bpp}비트`], ["1초", `1프레임 × ${V.fps} FPS`], ["10초", "1초 × 10"]];
-    truthRows.forEach(([k, fml], i) => {
-      const yy = y + i * 52, v = parseNum(V.calc[i]), mk = V.marks[i], tone = mk === true ? LC.ok : mk === false ? LC.bad : null;
-      c.textBaseline = "middle"; c.textAlign = "left"; c.fillStyle = LC.ink; c.font = `700 20px ${F_SANS}`; c.fillText(k, P, yy + 22);
-      c.fillStyle = LC.muted; c.font = `500 19px ${F_MONO}`; c.fillText(fml + " =", P + 90, yy + 22);
-      const bx = P + 470, bw = 330; c.fillStyle = tone ? tone[0] : "#fff"; rrect(c, bx, yy, bw, 44, 8); c.fill(); if (!tone) { c.strokeStyle = LC.line; c.lineWidth = 1.5; c.stroke(); }
-      c.textAlign = "right"; c.fillStyle = tone ? tone[1] : v === null ? "#B7C1BB" : LC.ink; c.font = `700 21px ${F_MONO}`; c.fillText(v === null ? "_" : fmtN(v), bx + bw - 14, yy + 23);
-      c.textAlign = "left"; c.fillStyle = LC.muted; c.font = `500 17px ${F_SANS}`; c.fillText("비트", bx + bw + 10, yy + 23);
-      if (tone) { c.fillStyle = tone[1]; c.font = `700 22px ${F_SANS}`; c.fillText(mk ? "✓" : "✗", bx + bw + 60, yy + 23); }
+    CUT_ROWS.forEach((q, i) => {
+      const yy = y + i * 52, r = V.cut[i], mk = V.marks[i], tone = mk === true ? LC.ok : mk === false ? LC.bad : null;
+      c.fillStyle = tone ? tone[0] : LC.panel; rrect(c, P, yy, W - P * 2, 44, 8); c.fill();
+      c.textBaseline = "middle"; c.textAlign = "left"; c.fillStyle = LC.ink; c.font = `700 20px ${F_SANS}`; c.fillText(q, P + 14, yy + 23);
+      c.font = `600 19px ${F_SANS}`; c.fillStyle = r[0] === null ? "#9AA59F" : LC.ink; c.fillText(`0과 1: ${r[0] === null ? "_" : CUT_AMT[r[0]]}`, P + 232, yy + 23);
+      c.fillStyle = r[1] === null ? "#9AA59F" : LC.ink; c.fillText(`잃는 것: ${r[1] === null ? "_" : CUT_LOSE[r[1]]}`, P + 470, yy + 23);
+      if (tone) { c.textAlign = "right"; c.fillStyle = tone[1]; c.font = `700 24px ${F_SANS}`; c.fillText(mk ? "✓" : "✗", W - P - 16, yy + 23); }
     });
     y += calcH + 22; c.textBaseline = "top"; c.textAlign = "left"; c.font = `600 19px ${F_SANS}`;
     c.fillStyle = LC.ink; c.fillText(`① 관찰: ${smoothText() || "아직 고르지 않음"}`, P, y);
@@ -1080,8 +1066,8 @@ const __dl = (blob, name) => { const no = (String(name).match(/\d{3,6}/) || [""]
   });
 
   $("vidSnapBtn").addEventListener("click", () => {
-    const blanks = V.calc.filter((x) => !parseNum(x)).length;
-    copyCanvas(drawVidSnap, "vidSnap", "영상 결과를 복사했어요. 붙여 넣을 곳을 누르고 Ctrl+V 하세요.", blanks ? `(계산 ${blanks}칸이 아직 비어 있어요)` : V.marks.some((m) => m === null) ? "([계산 점검]을 누르면 ✓/✗도 함께 담겨요)" : "");
+    const blanks = V.cut.filter((r) => r[0] === null || r[1] === null).length;
+    copyCanvas(drawVidSnap, "vidSnap", "영상 결과를 복사했어요. 붙여 넣을 곳을 누르고 Ctrl+V 하세요.", blanks ? `(② 줄여 보기 ${blanks}줄이 아직 비어 있어요)` : V.marks.some((m) => m === null) ? "([점검]을 누르면 ✓/✗도 함께 담겨요)" : "");
   });
 
   // ---------- stages ----------
