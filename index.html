@@ -17,7 +17,8 @@
   a.card { display:flex; flex-direction:column; gap:6px; padding:20px; background:var(--card); border:1px solid var(--line); border-radius:14px; text-decoration:none; color:inherit; }
   a.card:hover { border-color:var(--muted); }
   a.card b { font-family:"Black Han Sans",sans-serif; font-weight:400; font-size:24px; }
-  a.card.pixel b { color:var(--blue); } a.card.sound b { color:var(--orange); }
+  a.card.pixel b { color:var(--blue); } a.card.sound b { color:var(--orange); } a.card.spark b { color:var(--ink); }
+  h2 { font-size:18px; margin:16px 0 0; }
   a.card span { font-size:14px; color:var(--muted); }
 </style>
 </head>
@@ -28,6 +29,12 @@
   <div class="grid">
     <a class="card pixel" href="pixel.html"><b>그림 암호 작전</b><span>이미지 · 픽셀 · 해상도</span></a>
     <a class="card sound" href="sound.html"><b>소리 암호 작전</b><span>소리 · 표본화 · 양자화</span></a>
+  </div>
+  <h2>SPARK LAB</h2>
+  <p>9주 · 데이터로 통학로 살피기</p>
+  <div class="grid">
+    <a class="card spark" href="route.html"><b>통학로 진단</b><span>9주 1차시 · 공공데이터 · 지도 · ★</span></a>
+    <a class="card spark" href="stopping.html"><b>정지거리 측정</b><span>9주 2차시 · 마퀸 · 그래프 · 기준값 T</span></a>
   </div>
 </main>
 </body>
