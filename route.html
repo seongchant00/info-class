@@ -1709,6 +1709,8 @@ function view4(){
   <div class="split"><div><div id="map4" class="map"></div><div style="margin-top:8px">${baseBtns('map4')}</div></div>
    <div><div id="side4"></div></div></div>
   <div id="n4"></div>`;
+  // '위도'·'경도' 열을 미리 골라 둔다(10/13). 학생이 바꾸면 그대로 쓴다(바꿔 고르면 막힘 메시지)
+  if(s.la<0&&s.lo<0){s.la=d.headers.indexOf('위도');s.lo=d.headers.indexOf('경도');save();}
   $('#la').value=s.la;$('#lo').value=s.lo;
   const m=maps.m4=makeMap('map4',null,12);bindBases('map4',m);
   let layer=L.layerGroup().addTo(m);
