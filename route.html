@@ -1414,6 +1414,7 @@ function view1(){
   <div class="box">
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="CSV 파일 열기"><b>내 담당 CSV 파일을 끌어다 놓기</b>또는 눌러서 고르기</div>
     <input type="file" id="file" accept=".csv,text/csv" hidden>
+    <div class="row" style="margin-top:10px;gap:18px"><span class="hint">CSV 받기</span>${ORDER.map(k=>`<a class="btn link" href="#" data-dl="${k}">${esc(DS_RAW[k].file)}</a>`).join('')}</div>
     <div id="m1"></div>
   </div>
   <div id="rawbox"></div>`;
@@ -1426,8 +1427,11 @@ function view1(){
   drop.ondragleave=()=>drop.classList.remove('over');
   drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');if(e.dataTransfer.files[0])readFile(e.dataTransfer.files[0]);};
   file.onchange=()=>{if(file.files[0])readFile(file.files[0]);};
+  $$('[data-dl]').forEach(x=>x.onclick=e=>{e.preventDefault();dlCSV(x.dataset.dl);});
   if(S.ds) showRaw();
 }
+// 수업용 원본 CSV(①~④, 오류 그대로)를 앱 안에서 내려받기. 엑셀이 한글을 읽도록 BOM을 붙인다
+function dlCSV(k){const r=DS_RAW[k],url=URL.createObjectURL(new Blob(['\ufeff'+r.csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=r.file;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function readFile(f){
   const m=$('#m1');
   if(!(S.info.ban&&S.info.mo&&S.info.no)){m.innerHTML='<div class="msg bad">반·모둠·번호를 먼저 적어 주세요.</div>';return;}
