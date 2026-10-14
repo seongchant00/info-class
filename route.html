@@ -859,6 +859,13 @@ table.dt tr.sel td{background:#e7eef8}
   .main{flex-direction:column}
   nav.rail{width:auto;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line);padding:8px}
   .leg,.rail .foot,.stop .d{display:none}
+  /* 노선도를 가로로: 번호 + 이름 한 줄, 세로 선은 감춘다 */
+  nav.rail{gap:4px;align-items:center}
+  .stop{width:auto;flex:none;grid-template-columns:30px auto;gap:6px;min-height:44px;padding-right:10px}
+  .stop .trk i.up,.stop .trk i.dn{display:none}
+  .stop .t{white-space:nowrap;font-size:14px}
+  header.top .who{margin-left:0;width:100%}
+  #teacher{inset:8px;padding:16px}
   section.view{padding:18px 16px 40px}
   .lead{margin-left:0}
   .col{grid-template-columns:minmax(0,1fr) auto}
@@ -1017,6 +1024,11 @@ function $(s,r){return (r||document).querySelector(s);}
 function $$(s,r){return [...(r||document).querySelectorAll(s)];}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
+// 주소 끝이 #sample이면 샘플로 채운 완성본을 연다(교사 확인용, 휴대폰 포함). 이 PC의 학생 작업을 건드리지 않게 저장하지 않는다
+var SAMPLE_VIEW=typeof location!=='undefined'&&location.hash==='#sample';
+// 휴대폰에서 노선도가 가로로 흐를 때 지금 단계를 보이게 한다
+function railFocus(){const c=$('#rail .stop.cur');if(c&&c.scrollIntoView&&$('#rail').scrollWidth>$('#rail').clientWidth)c.scrollIntoView({block:'nearest',inline:'center'});}
+
 // 노선도: 혼자 = 가는 선, thick에 든 구간 = 굵은 선. legs[i]가 있으면 i단계 앞에 구간 이름
 function railHTML(steps,st,legs,thick,foot){
   const segThick=i=>thick.includes(i), segLit=i=>i+1<=Math.max(st.max,st.step), lit=i=>i<st.max||i<st.step;
@@ -1112,7 +1124,7 @@ function blankRow13(){return{at:'',cars:'',stop:'',go:'',note:''};}
 function blankCard13(){return{n:'',rows:[blankRow13(),blankRow13()]};}
 function fresh13(){return{step:0,max:0,teamRaw:'',cards:[blankCard13()],diff:[],qp:{where:'',who:'',why:''},card:null};}
 let S13=fresh13();
-function save13(){try{localStorage.setItem(KEY13,JSON.stringify(S13));}catch(e){}}
+function save13(){if(SAMPLE_VIEW)return;try{localStorage.setItem(KEY13,JSON.stringify(S13));}catch(e){}}
 function load13(){try{const t=localStorage.getItem(KEY13);return t?JSON.parse(t):null;}catch(e){return null;}}
 function team13(){try{return S13.teamRaw.trim()?teamDec(S13.teamRaw):null;}catch(e){return null;}}
 function teamCode3(){return teamEnc(teamSet(team13(),'o',w13O(S13.cards,S13.diff,S13.qp),teamToday()));}
@@ -1132,7 +1144,7 @@ function enter13(){MODE='w13';lightStages([0],'SPARK 다섯 단계 중 S');}
 function exit13(){MODE='w9';lightStages([0,1],'SPARK 다섯 단계 중 S와 P');}
 function setWho13(){const t=team13();$('#who').innerHTML=t?`<b>${esc(t.b)}반 ${esc(t.m)}모둠</b>&nbsp;&nbsp;문제 정의`:'문제 정의';}
 // 다섯 칸 모두 모둠이 함께(굵은 선)
-function rail13(){$('#rail').innerHTML=railHTML(STEPS13,{step:S13.step,max:S13.max,unlock:S.unlock},{0:'모둠'},[0,1,2,3],FOOT13);$$('#rail .stop').forEach(b=>b.onclick=()=>go13(+b.dataset.i));}
+function rail13(){$('#rail').innerHTML=railHTML(STEPS13,{step:S13.step,max:S13.max,unlock:S.unlock},{0:'모둠'},[0,1,2,3],FOOT13);$$('#rail .stop').forEach(b=>b.onclick=()=>go13(+b.dataset.i));railFocus();}
 function go13(i){S13.step=i;save13();render13();}
 function done13(i){if(S13.max<i+1)S13.max=i+1;save13();rail13();}
 function next13(i,ok){return `<div class="row" style="margin-top:16px"><button class="btn sign" id="next" ${ok?'':'disabled'}>다음: ${STEPS13[i+1].t}</button></div>`;}
@@ -1354,7 +1366,7 @@ function fresh(){return{
   s7:{cant:'',how:'',robot:''},
 };}
 let S=fresh();
-function save(){try{localStorage.setItem('sparklab-sp',JSON.stringify(S));}catch(e){}}
+function save(){if(SAMPLE_VIEW)return;try{localStorage.setItem('sparklab-sp',JSON.stringify(S));}catch(e){}}
 function loadSaved(){try{const t=localStorage.getItem('sparklab-sp');return t?JSON.parse(t):null;}catch(e){return null;}}
 
 /* ===== 계산 ===== */
@@ -1380,11 +1392,11 @@ function parseClean(txt){
 }
 
 /* ===== 공통 렌더 ===== */
-function setWho(){if(MODE==='w13')return setWho13();const i=S.info;$('#who').innerHTML=i.ban?`<b>${esc(i.ban)}반 ${esc(i.mo)}모둠 ${esc(i.no)}번</b>${S.ds&&META[S.ds.key]?'&nbsp;&nbsp;담당 '+'①②③④'[META[S.ds.key].no-1]+' '+META[S.ds.key].label:''}`:'';}
+function setWho(){if(MODE==='w13')return setWho13();const i=S.info;$('#who').innerHTML=i.ban?`<b>${esc(i.ban)}반 ${esc(i.mo)}모둠 ${esc(i.no)}번</b>${S.ds&&META[S.ds.key]?'&nbsp;&nbsp;담당 '+'①②③④'[META[S.ds.key].no-1]+' '+META[S.ds.key].label:''}`:'';if(SAMPLE_VIEW)$('#who').insertAdjacentHTML('beforeend','&nbsp;&nbsp;<span class="hint">샘플 · 저장 안 됨</span>');}
 const LEGS={0:'혼자',4:'모둠',6:'각자'},THICK=[4];
 const FOOT='';
 // 1~4 혼자(가는 선) → 5에서 넷이 합쳐짐(굵은 선) → 6 → 7 다시 각자(가는 선)
-function rail(){if(MODE==='w13')return rail13();$('#rail').innerHTML=railHTML(STEPS,S,LEGS,THICK,FOOT);$$('#rail .stop').forEach(b=>b.onclick=()=>go(+b.dataset.i));}
+function rail(){if(MODE==='w13')return rail13();$('#rail').innerHTML=railHTML(STEPS,S,LEGS,THICK,FOOT);$$('#rail .stop').forEach(b=>b.onclick=()=>go(+b.dataset.i));railFocus();}
 
 function go(i){S.step=i;save();render();}
 function done(i){if(S.max<i+1)S.max=i+1;save();rail();}
@@ -2040,6 +2052,7 @@ let tclk=0,tt=null;document.querySelector('header.top h1').addEventListener('cli
 
 /* ===== 시작 ===== */
 function start(){
+  if(SAMPLE_VIEW){S=Object.assign(fresh(),JSON.parse(JSON.stringify(SAMPLE_STATE)));S.step=6;S.max=7;render();return;}
   const s13=load13();
   if(s13&&s13.teamRaw){
     enter13();S13=Object.assign(fresh13(),s13);const t=team13();

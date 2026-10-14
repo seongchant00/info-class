@@ -858,6 +858,13 @@ table.dt tr.sel td{background:#e7eef8}
   .main{flex-direction:column}
   nav.rail{width:auto;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line);padding:8px}
   .leg,.rail .foot,.stop .d{display:none}
+  /* 노선도를 가로로: 번호 + 이름 한 줄, 세로 선은 감춘다 */
+  nav.rail{gap:4px;align-items:center}
+  .stop{width:auto;flex:none;grid-template-columns:30px auto;gap:6px;min-height:44px;padding-right:10px}
+  .stop .trk i.up,.stop .trk i.dn{display:none}
+  .stop .t{white-space:nowrap;font-size:14px}
+  header.top .who{margin-left:0;width:100%}
+  #teacher{inset:8px;padding:16px}
   section.view{padding:18px 16px 40px}
   .lead{margin-left:0}
   .col{grid-template-columns:minmax(0,1fr) auto}
@@ -1022,6 +1029,11 @@ function $(s,r){return (r||document).querySelector(s);}
 function $$(s,r){return [...(r||document).querySelectorAll(s)];}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
+// 주소 끝이 #sample이면 샘플로 채운 완성본을 연다(교사 확인용, 휴대폰 포함). 이 PC의 학생 작업을 건드리지 않게 저장하지 않는다
+var SAMPLE_VIEW=typeof location!=='undefined'&&location.hash==='#sample';
+// 휴대폰에서 노선도가 가로로 흐를 때 지금 단계를 보이게 한다
+function railFocus(){const c=$('#rail .stop.cur');if(c&&c.scrollIntoView&&$('#rail').scrollWidth>$('#rail').clientWidth)c.scrollIntoView({block:'nearest',inline:'center'});}
+
 // 노선도: 혼자 = 가는 선, thick에 든 구간 = 굵은 선. legs[i]가 있으면 i단계 앞에 구간 이름
 function railHTML(steps,st,legs,thick,foot){
   const segThick=i=>thick.includes(i), segLit=i=>i+1<=Math.max(st.max,st.step), lit=i=>i<st.max||i<st.step;
@@ -1172,7 +1184,7 @@ function fresh(){return{step:0,max:0,unlock:false,info:{ban:'',mo:'',no:''},team
   s7:{why:'',from:'',to:''},
 };}
 let S=fresh();
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function save(){if(SAMPLE_VIEW)return;try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 function loadSaved(){try{const t=localStorage.getItem(KEY);return t?JSON.parse(t):null;}catch(e){return null;}}
 function team(){try{return S.teamRaw.trim()?teamDec(S.teamRaw):null;}catch(e){return null;}}
 function teamOk(){const t=team(),i=S.info;return !!t&&!!(i.ban&&i.mo&&i.no)&&!teamCheck(t,i.ban,i.mo)&&!teamNeed(t,'s');}
@@ -1186,9 +1198,9 @@ function myPCode(){const i=S.info;return pCodeEnc({b:i.ban,m:i.mo,n:i.no,d:myD()
 function colorOf(c){return c<0?'#24282c':PAL[c%PAL.length];}
 
 /* ===== 공통 렌더 ===== */
-function setWho(){const i=S.info;$('#who').innerHTML=i.ban?`<b>${esc(i.ban)}반 ${esc(i.mo)}모둠 ${esc(i.no)}번</b>`:'';}
+function setWho(){const i=S.info;$('#who').innerHTML=(i.ban?`<b>${esc(i.ban)}반 ${esc(i.mo)}모둠 ${esc(i.no)}번</b>`:'')+(SAMPLE_VIEW?'&nbsp;&nbsp;<span class="hint">샘플 · 저장 안 됨</span>':'');}
 // 1~4 혼자(가는 선) → 5·6 모둠(굵은 선) → 7 다시 각자
-function rail(){$('#rail').innerHTML=railHTML(STEPS,S,LEGS,THICK,FOOT);$$('#rail .stop').forEach(b=>b.onclick=()=>go(+b.dataset.i));}
+function rail(){$('#rail').innerHTML=railHTML(STEPS,S,LEGS,THICK,FOOT);$$('#rail .stop').forEach(b=>b.onclick=()=>go(+b.dataset.i));railFocus();}
 function go(i){S.step=i;save();render();}
 function done(i){if(S.max<i+1)S.max=i+1;save();rail();}
 function nextBtn(i,ok){return `<div class="row" style="margin-top:16px"><button class="btn sign" id="next" ${ok?'':'disabled'}>다음: ${STEPS[i+1].t}</button></div>`;}
@@ -1550,6 +1562,7 @@ function teacher(){
 document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.altKey&&e.code==='KeyT'){e.preventDefault();teacher();}});
 let tclk=0,tclkT=null;document.querySelector('header.top h1').addEventListener('click',()=>{tclk++;clearTimeout(tclkT);tclkT=setTimeout(()=>tclk=0,1500);if(tclk>=5){tclk=0;teacher();}});
 (function start(){
+  if(SAMPLE_VIEW){S=sampleState();S.step=6;S.max=7;render();return;}
   const sv=loadSaved();
   if(sv&&sv.info&&sv.info.no){
     $('#view').innerHTML=`<div class="box" style="max-width:640px"><h3>이 컴퓨터에 하던 작업이 있어요</h3><p>${esc(sv.info.ban)}반 ${esc(sv.info.mo)}모둠 ${esc(sv.info.no)}번 · ${STEPS[sv.step].t} 단계</p><div class="row"><button class="btn" id="cont">이어서 하기</button><button class="btn ghost" id="newst">새로 시작</button></div></div>`;
