@@ -1513,6 +1513,7 @@ function view2(){
     </div><div id="m21"></div>
   </div>
   <div class="box"><h3>② 범주형? 수치형?</h3>
+    <div class="ask">이 열의 값 두 개를 <b>더하거나 평균 내면 뜻이 있나요?</b> 있으면 수치형, 없으면 범주형.</div>
     <p class="hint">범주형·수치형을 2개 이상씩 고르세요. 애매하면 '헷갈림'.</p>
     <div class="chips" id="cols"></div>
     <div class="row" style="margin-top:12px"><button class="btn ghost" id="ck2">확인</button><span class="hint" id="cnt2"></span></div>
@@ -1546,7 +1547,7 @@ function drawCols(){
     const v=s.cls[c]||'',res=s.checked?s.result[c]:null;
     const rc=res?{ok:'r-ok',bad:'r-bad',both:'r-both'}[res.r]:'';
     return `<div class="col ${rc}" data-c="${c}"><div class="nm">${esc(h)}</div><div class="ex" title="${esc(colExamples(c))}">예: ${esc(colExamples(c))}</div>
-      <div class="seg">${[['C','범주형'],['N','수치형'],['B','헷갈림']].map(([k,l])=>`<button data-v="${k}" aria-pressed="${v===k}">${l}</button>`).join('')}</div>
+      <div class="seg">${[['C','범주형 · 종류'],['N','수치형 · 양'],['B','헷갈림']].map(([k,l])=>`<button data-v="${k}" aria-pressed="${v===k}">${l}</button>`).join('')}</div>
       ${res?`<div class="fb">${res.m}</div>`:''}</div>`;
   }).join('');
   $$('#cols .col').forEach(el=>{const c=+el.dataset.c;$$('button',el).forEach(b=>b.onclick=()=>{s.cls[c]=s.cls[c]===b.dataset.v?'':b.dataset.v;delete s.result[c];save();drawCols();gate2();});});
@@ -1558,9 +1559,9 @@ function judge(c,v){
   if(v==='B'){ if(k==='B')return{r:'ok',m:'맞아요. 숫자 모양이지만 구분하는 값이라 범주형에 가까워요.'};
     return{r:'both',m:k==='N'?'수치형이에요. 평균을 내도 뜻이 있어요.':'범주형이에요. 종류나 이름이에요.'}; }
   if(k==='B'){ if(v==='C')return{r:'ok',m:'맞아요. 숫자지만 이름표처럼 쓰여요.'};
-    return{r:'both',m:'이 값들의 평균에 뜻이 있을까요? (예: '+esc(ex)+')'}; }
+    return{r:'both',m:'이 값들(예: '+esc(ex)+')을 더하거나 평균 내면 뜻이 있을까요?'}; }
   if(k===v)return{r:'ok',m:v==='N'?'맞아요.':'맞아요.'};
-  return{r:'bad',m:k==='N'?'이 값들로 평균을 낼 수 있을까요?':'이 값들(예: '+esc(ex)+')을 더할 수 있을까요?'};
+  return{r:'bad',m:'이 값들(예: '+esc(ex)+')을 더하거나 평균 내면 뜻이 있을까요?'};
 }
 function check2(){
   const s=S.s2,n=Object.entries(s.cls).filter(([,v])=>v);
