@@ -1455,7 +1455,7 @@ async function cardP(){
   g.fillStyle=K.sub;g.font=`20px ${FONT}`;g.fillText('실측: 벽까지 남은 거리 g',60,y+100);
   g.fillStyle=K.ink;g.font=`bold 36px ${FONT}`;g.fillText(d[2].map(v=>v<0?'충돌':`${+(T0-v).toFixed(1)}cm`).join(' · '),60,y+146);
   // 왼쪽 아래: ★과 모둠 빠름 단계
-  y=sec(g,40,472,500,476,'★ 순찰 지점');
+  y=sec(g,40,472,500,476,'★ 순찰 지역');
   g.fillStyle=K.ink;g.font=`bold 26px ${FONT}`;y=wrap(g,t&&t.s?t.s.p:'',60,y,460,34,2);
   y+=26;g.fillStyle=K.sub;g.font=`bold 20px ${FONT}`;g.fillText('모둠 빠름 단계 최대 제동거리',60,y);y+=36;
   Object.entries(G).forEach(([n,dd],k)=>{if(y>924)return;const v=dd[2].filter(x=>x>=0),hits=dd[2].length-v.length;
