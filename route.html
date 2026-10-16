@@ -1598,9 +1598,12 @@ function view3(){
     <div class="row" style="margin-top:8px"><span>열 살펴보기</span><select id="sc"><option value="">열</option>${opts}</select><span class="stat" id="sstat"></span></div>
     <div class="hint" style="margin-top:6px">열 이름을 누르면 정렬돼요.</div>
   </div>
+  ${ll3()?`<div class="box"><div class="row" style="justify-content:space-between"><h3 style="margin:0">지도로 보기</h3><button class="btn ghost" id="box3">지도에서 네모로 고르기</button></div>
+    <div id="map3" class="map" style="height:320px;margin-top:10px"></div></div>`:''}
   <div class="box"><h3>표 <span class="hint" id="tinfo"></span></h3>
+    <div id="selbar"></div>
     <div id="t3"></div>
-    <div class="row" style="margin-top:10px"><button class="btn" id="markrow">고른 행 기록</button><button class="btn ghost" id="markcol">열 기록</button><button class="btn link" id="selvis" hidden></button><span class="hint" id="selinfo"></span></div>
+    <div class="row" style="margin-top:10px"><button class="btn ghost" id="markcol">열 기록</button><button class="btn link" id="selvis" hidden></button><span class="hint" id="selinfo"></span></div>
     <div id="form3"></div>
   </div>
   <div class="box"><h3>이상한 점</h3><div id="finds"></div></div>
@@ -1609,10 +1612,55 @@ function view3(){
   $('#fgo').onclick=()=>{filt={c:+$('#fc').value,m:$('#fm').value,a:$('#fa').value.trim(),b:$('#fb').value.trim()};sel.clear();draw3();};
   $('#fall').onclick=()=>{filt=null;sel.clear();draw3();};
   $('#sc').onchange=colStat;
-  $('#markrow').onclick=()=>form3('row');
   $('#selvis').onclick=()=>{visibleIdx().forEach(i=>sel.add(i));draw3();};
-  $('#markcol').onclick=()=>form3('col');
+  $('#markcol').onclick=()=>form3();
+  rsn='';$('#selbar').dataset.on='';map3();
   draw3();drawFinds();gate3();
+}
+/* 3단계 지도: 내 데이터 점(위도·경도 열이 있으면). 네모로 묶거나 점을 눌러 표의 행을 고른다. 어느 점이 이상한지는 표시하지 않는다 */
+function ll3(){const h=S.ds.headers;return h.indexOf('위도')>=0&&h.indexOf('경도')>=0;}
+let pts3=[];
+function map3(){
+  if(!ll3()){pts3=[];return;}
+  const d=S.ds,la=d.headers.indexOf('위도'),lo=d.headers.indexOf('경도'),color=META[d.key]?META[d.key].color:'#333';
+  const m=maps.m3=makeMap('map3',null,12);
+  pts3=[];d.rows.forEach((r,i)=>{const a=Number(r[la]),b=Number(r[lo]);if(r[la]===''||r[lo]===''||isNaN(a)||isNaN(b)||Math.abs(a)>90||Math.abs(b)>180)return;
+    const mk=L.circleMarker([a,b],{radius:5,color:'#fff',weight:1.5,fillColor:color,fillOpacity:1}).bindTooltip(`${i+1}행`).addTo(m);
+    mk.on('click',()=>{sel.has(i)?sel.delete(i):sel.add(i);draw3();});pts3.push({i,lat:a,lng:b,mk,color});});
+  if(pts3.length)m.fitBounds(L.latLngBounds(pts3.map(p=>[p.lat,p.lng])).pad(0.1),{maxZoom:15});
+  let on=false,start=null,rect=null;const btn=$('#box3');
+  const mode=v=>{on=v;btn.textContent=v?'지도에서 끌어 네모를 그리세요':'지도에서 네모로 고르기';btn.setAttribute('aria-pressed',v);m.getContainer().style.cursor=v?'crosshair':'';v?(m.dragging.disable(),m.boxZoom.disable()):(m.dragging.enable(),m.boxZoom.enable());};
+  btn.onclick=()=>mode(!on);
+  m.on('mousedown',e=>{if(!on)return;start=e.latlng;rect=L.rectangle([start,start],{color:'#cf3027',weight:2,fillOpacity:.08,interactive:false}).addTo(m);});
+  m.on('mousemove',e=>{if(rect)rect.setBounds(L.latLngBounds(start,e.latlng));});
+  m.on('mouseup',()=>{if(!rect)return;box3Select(rect.getBounds());m.removeLayer(rect);rect=null;mode(false);});
+  paint3();
+}
+function box3Select(b){pts3.forEach(p=>{if(b.contains([p.lat,p.lng]))sel.add(p.i);});draw3();}
+function paint3(){const h=myHidden();pts3.forEach(p=>{const on=sel.has(p.i),hid=h.has(p.i);p.mk.setStyle({radius:on?7:5,color:on?'#cf3027':'#fff',weight:on?3:1.5,fillColor:hid?'#b3b8bc':p.color,fillOpacity:hid?.5:1});if(on)p.mk.bringToFront();});}
+/* 고른 행 처리 줄: 이유 하나 + 처리 버튼 하나로 기록 */
+let rsn='';
+function selBar(){
+  const b=$('#selbar');if(!b)return;
+  if(!sel.size){b.innerHTML='';b.dataset.on='';return;}
+  if(b.dataset.on){$('#sbn').textContent=`${sel.size}개 행`;$('#sbfix').disabled=sel.size!==1;return;}
+  b.dataset.on='1';const d=S.ds,opts=d.headers.map((h,c)=>`<option value="${c}">${esc(h)}</option>`).join('');
+  b.innerHTML=`<div class="ask" style="margin:0 0 12px">
+    <div class="row" style="gap:14px"><b id="sbn">${sel.size}개 행</b><span>왜 이상한가요?</span>${REASONS.map(r=>`<button class="btn link rch">${r}</button>`).join('')}</div>
+    <div class="row" style="margin-top:8px"><input type="text" id="frea" style="flex:1;min-width:220px" placeholder="이유" value="${esc(rsn)}">
+      <button class="btn" id="sbhide">숨기기</button><button class="btn ghost" id="sbkeep">그대로 두고 기록</button><button class="btn ghost" id="sbfix" ${sel.size!==1?'disabled':''}>고치기</button><button class="btn link" id="sbcancel">고르기 취소</button></div>
+    <div class="row" id="fixrow" hidden style="margin-top:8px"><span>고칠 열</span><select id="fixc">${opts}</select><span>새 값</span><input type="text" id="fixv" style="width:160px"><button class="btn" id="sbfixgo">고쳐서 기록</button></div>
+    <div id="fmsg"></div></div>`;
+  $$('#selbar .rch').forEach(x=>x.onclick=()=>{$('#frea').value=rsn=x.textContent;});
+  $('#frea').oninput=e=>{rsn=e.target.value;};
+  const rec=(act,fix)=>{const reason=$('#frea').value.trim();if(reason.length<3){$('#fmsg').innerHTML='<div class="msg bad">이유를 골라 주세요.</div>';return;}
+    const o={kind:'row',rows:[...sel].sort((a,c)=>a-c),reason,act};if(fix)o.fix=fix;S.s3.find.push(o);sel.clear();rsn='';save();draw3();drawFinds();gate3();};
+  $('#sbhide').onclick=()=>rec('hide');
+  $('#sbkeep').onclick=()=>rec('keep');
+  $('#sbcancel').onclick=()=>{sel.clear();draw3();};
+  const fixc=$('#fixc');fixc.onchange=()=>{$('#fixv').value=S.ds.rows[[...sel][0]][+fixc.value];};
+  $('#sbfix').onclick=()=>{$('#fixrow').hidden=false;fixc.onchange();};
+  $('#sbfixgo').onclick=()=>{const r=[...sel][0],c=+fixc.value;rec('fix',{c,val:$('#fixv').value.trim(),old:S.ds.rows[r][c]});};
 }
 // 실마리: 담당별 두 단계. 어디를 볼지 → 기준. 어느 행이 이상한지는 알려 주지 않는다. 연 횟수는 정리 결과 코드(hn)에 남는다
 function hint3(){
@@ -1643,7 +1691,7 @@ function draw3(){
   const all=$('#selall');if(all){all.checked=idx.length>0&&idx.every(i=>sel.has(i));all.onchange=()=>{idx.forEach(i=>all.checked?sel.add(i):sel.delete(i));draw3();};}
   selInfo();
 }
-function selInfo(){$('#selinfo').textContent=sel.size?`고른 행 ${sel.size}개`:'';const v=$('#selvis');if(v){const n=filt?visibleIdx().length:0;v.hidden=!n;v.textContent=`보이는 ${n}행 모두 고르기`;}}
+function selInfo(){selBar();if(pts3.length)paint3();$('#selinfo').textContent='';const v=$('#selvis');if(v){const n=filt?visibleIdx().length:0;v.hidden=!n;v.textContent=`보이는 ${n}행 모두 고르기`;}}
 function colStat(){
   const c=$('#sc').value;if(c===''){$('#sstat').innerHTML='';return;}
   const fx=myFixes(),vals=S.ds.rows.map((_,i)=>cellOf(S.ds.rows,fx,i,+c));
@@ -1653,32 +1701,17 @@ function colStat(){
   $('#sstat').innerHTML=`빈칸 <b>${nb}</b> · 값 종류 <b>${Object.keys(cnt).length}</b> · 많은 값 ${top||'-'}${ns.length===vals.length-nb&&ns.length?` · 최소 <b>${Math.min(...ns)}</b> · 최대 <b>${Math.max(...ns)}</b>`:''}`;
 }
 const REASONS=['값이 범위 밖','빈칸이 많음','모든 값이 같음','같은 행이 반복됨','주소와 맞지 않음'];
-function form3(kind){
-  const f=$('#form3'),d=S.ds;
-  if(kind==='row'&&!sel.size){f.innerHTML='<div class="msg bad">표에서 행을 먼저 골라 주세요.</div>';return;}
-  const opts=d.headers.map((h,c)=>`<option value="${c}">${esc(h)}</option>`).join('');
+function form3(){
+  const f=$('#form3'),d=S.ds,opts=d.headers.map((h,c)=>`<option value="${c}">${esc(h)}</option>`).join('');
   f.innerHTML=`<div class="ask" style="margin-top:12px">
-   ${kind==='row'?`<b>${sel.size}개 행</b>, 왜 이상한가요?`:`<b>어느 열</b>이 왜 이상한가요? <select id="fcol">${opts}</select>`}
-   <div class="row" style="gap:14px;margin-top:6px">${REASONS.map(r=>`<button class="btn link rch">${r}</button>`).join('')}<button class="btn link" id="rself">직접 쓰기</button></div>
-   <input type="text" id="frea" style="width:100%;margin:8px 0" placeholder="이유">
-   ${kind==='row'?`<div class="row">
-     <label><input type="radio" name="act" value="keep" checked> 둔다</label>
-     <label><input type="radio" name="act" value="hide"> 숨긴다</label>
-     <label><input type="radio" name="act" value="fix" ${sel.size!==1?'disabled':''}> 고친다</label></div>
-     <div class="row" id="fixrow" hidden style="margin-top:8px"><span>고칠 열</span><select id="fixc">${opts}</select><span>새 값</span><input type="text" id="fixv" style="width:160px"></div>`:''}
-   <div class="row" style="margin-top:10px"><button class="btn" id="fsave">기록</button><button class="btn ghost" id="fcancel">취소</button><span id="fmsg" class="hint"></span></div></div>`;
-  $$('input[name=act]').forEach(r=>r.onchange=()=>{$('#fixrow').hidden=r.value!=='fix'||!r.checked;});
-  const fixc=$('#fixc');if(fixc){fixc.onchange=()=>{$('#fixv').value=S.ds.rows[[...sel][0]][+fixc.value];};fixc.onchange();}
-  $$('.rch').forEach(b=>b.onclick=()=>{$('#frea').value=b.textContent;});
-  $('#rself').onclick=()=>{$('#frea').value='';$('#frea').focus();};
+   <b>어느 열</b>이 왜 이상한가요? <select id="fcol">${opts}</select>
+   <div class="row" style="gap:14px;margin-top:6px">${REASONS.map(r=>`<button class="btn link rch">${r}</button>`).join('')}</div>
+   <div class="row" style="margin-top:8px"><input type="text" id="fcrea" style="flex:1;min-width:220px" placeholder="이유"><button class="btn" id="fsave">기록</button><button class="btn ghost" id="fcancel">취소</button></div><div id="fcmsg"></div></div>`;
+  $$('#form3 .rch').forEach(b=>b.onclick=()=>{$('#fcrea').value=b.textContent;});
   $('#fcancel').onclick=()=>f.innerHTML='';
   $('#fsave').onclick=()=>{
-    const reason=$('#frea').value.trim();if(reason.length<3){$('#fmsg').textContent='이유를 적어 주세요.';return;}
-    if(kind==='col'){S.s3.find.push({kind:'col',col:+$('#fcol').value,reason});}
-    else{const act=$('input[name=act]:checked').value;const o={kind:'row',rows:[...sel].sort((a,b)=>a-b),reason,act};
-      if(act==='fix'){o.fix={c:+$('#fixc').value,val:$('#fixv').value.trim(),old:S.ds.rows[o.rows[0]][+$('#fixc').value]};}
-      S.s3.find.push(o);sel.clear();}
-    save();f.innerHTML='';draw3();drawFinds();gate3();
+    const reason=$('#fcrea').value.trim();if(reason.length<3){$('#fcmsg').innerHTML='<div class="msg bad">이유를 골라 주세요.</div>';return;}
+    S.s3.find.push({kind:'col',col:+$('#fcol').value,reason});save();f.innerHTML='';draw3();drawFinds();gate3();
   };
 }
 function findText(f){
