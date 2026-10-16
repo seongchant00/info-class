@@ -1326,15 +1326,19 @@ function parseCSV(text){
 const META={
   cctv:{no:1,label:'CCTV',color:'#1f6feb',
     key:{'관리번호':'B','주소':'C','설치목적':'C','카메라대수':'N','화소수(만)':'N','촬영방면':'C','보관일수':'N','설치연월':'B','위도':'N','경도':'N','데이터기준일자':'B'},
+    hints:['열 살펴보기로 열마다 빈칸 수를 보세요.','모든 행이 빈칸이거나 모든 값이 같은 열이 있나요?'],
     expect:['설치연월·촬영방면 열이 187개 모두 빈칸','화소수(전부 200)·보관일수(전부 30)처럼 모든 값이 같은 열','주소 별내동 2221-1 차량방범 행이 같은 좌표로 두 번(중복)']},
   bell:{no:2,label:'비상벨',color:'#8b3fd9',
     key:{'관리번호':'B','설치위치':'C','주소':'C','설치장소유형':'C','설치목적':'C','위도':'N','경도':'N','연계방식':'C','경찰연계':'C','경비업체연계':'C','관리사무소연계':'C','설치연도':'B','최종점검일자':'B','점검결과(Y=정상)':'C','데이터기준일자':'B'},
+    hints:['경도 열 이름을 눌러 큰 값부터 정렬해 보세요.','별내동 경도는 약 127.10~127.14예요.'],
     expect:['163개 중 약 99개의 경도가 127.14보다 크거나 위도가 별내동(37.63~37.69) 밖. 주소는 모두 별내동','경찰·경비업체·관리사무소 연계가 모두 N','설치연도는 숫자지만 범주처럼 쓰임']},
   cw:{no:3,label:'횡단보도',color:'#1a9a52',sig:'신호등',
     key:{'관리번호':'B','도로명':'C','지번주소':'C','도로명주소':'C','횡단보도종류(코드)':'B','자전거횡단도겸용':'C','고원식(턱높인)':'C','차로수':'N','폭(m)':'N','길이(m)':'N','신호등':'C','녹색신호(초)':'N','적색신호(초)':'N','음향신호기':'C','보행자작동신호기':'C','점자블록':'C','집중조명':'C','보도턱낮춤':'C','교통섬':'C','위도':'N','경도':'N','데이터기준일자':'B'},
+    hints:['위도 열을 정렬하고 바로 위아래 행을 비교해 보세요.','위도·경도가 똑같으면 같은 횡단보도일까요?'],
     expect:['신호등이 N인 횡단보도 50곳','신호등 Y인데 녹색신호(초)가 빈칸 27곳','위도·경도가 똑같은 행 14묶음(36행)','좌표가 별내동 밖 3행(양진로)']},
   cam:{no:4,label:'단속카메라',color:'#f08a00',
     key:{'관리번호':'B','설치장소':'C','도로명':'C','주소':'C','도로종류':'C','단속구분(코드)':'B','단속구분(풀이·추정)':'C','제한속도(km/h)':'N','보호구역구분(코드)':'B','보호구역(풀이)':'C','설치연도':'B','관리기관':'C','위도':'N','경도':'N','데이터기준일자':'B'},
+    hints:['설치장소 열과 주소 열을 나란히 보세요.','설치장소의 도시와 주소의 동네가 같은가요?'],
     expect:['관리기관 두 곳(경찰 = 속도·신호, 시청 = 불법주정차)','제한속도 0 = 불법주정차 단속 카메라','설치장소가 고양시인데 주소는 별내동인 3행(J5926~J5928)','좌표가 별내 밖 2행(244, 215)']},
 };
 const ORDER=['cctv','bell','cw','cam'];
@@ -1359,7 +1363,7 @@ function fresh(){return{
   ds:null, // {key,file,headers,rows}
   s1:{rawSeen:false},
   s2:{nRows:'',nCols:'',meaning:'',cls:{},checked:false,first:null,result:{}},
-  s3:{find:[],qYes:'',qNo:'',sort:null},
+  s3:{find:[],qYes:'',qNo:'',sort:null,hint:0},
   s4:{la:-1,lo:-1,ok:false,line:'',thumb:null},
   s5:{mem:{},names:{},addrs:{},colorBy:'',merged:false},
   s6:{star:null,r:100,place:'',checks:[false,false,false,false],exp:'',sig:true,card:null},
@@ -1379,7 +1383,7 @@ function enc(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).rep
 function dec(s){s=s.trim().replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return JSON.parse(decodeURIComponent(escape(atob(s))));}
 const P_CLEAN='SPARK-SP:', OLD_CLEAN='살피다-정리:';
 function cleanCode(){
-  return P_CLEAN+enc({v:1,k:S.ds.key,b:S.info.ban,m:S.info.mo,n:S.info.no,h:ranges(myHidden()),f:myFixes(),la:S.s4.la,lo:S.s4.lo,s:S.s4.line,w:{c:S.s7.cant,h:S.s7.how,r:S.s7.robot}});
+  return P_CLEAN+enc({v:1,k:S.ds.key,b:S.info.ban,m:S.info.mo,n:S.info.no,h:ranges(myHidden()),f:myFixes(),la:S.s4.la,lo:S.s4.lo,s:S.s4.line,hn:S.s3.hint||0,w:{c:S.s7.cant,h:S.s7.how,r:S.s7.robot}});
 }
 function rawCode(k){const ll=defaultLL(k);return P_CLEAN+enc({v:1,k,b:'',m:'',n:'',h:[],f:[],la:ll.la,lo:ll.lo,s:'(원본 그대로, 정리하지 않음)'});}
 // 모둠 코드 1판: ★과 둘레 시설 수. 다음 도구(정지거리·문제 정의·반복 테스트)가 칸을 더한다(apps/shared/team.js)
@@ -1582,6 +1586,8 @@ function view3(){
   const opts=d.headers.map((h,c)=>`<option value="${c}">${esc(h)}</option>`).join('');
   $('#view').innerHTML=`
   <div class="vh"><h2>점검·정리</h2></div>
+  <div class="ask">이상한 점을 하나 찾아 기록하면 다음으로 갈 수 있어요.</div>
+  <div id="hint3" style="margin:-4px 0 12px"></div>
   <div class="box">
     <div class="row">
       <span>걸러 보기</span><select id="fc">${opts}</select>
@@ -1599,7 +1605,7 @@ function view3(){
   </div>
   <div class="box"><h3>이상한 점</h3><div id="finds"></div></div>
   <div id="n3"></div>`;
-  $('#fm').onchange=fmUI;fmUI();
+  $('#fm').onchange=fmUI;fmUI();hint3();
   $('#fgo').onclick=()=>{filt={c:+$('#fc').value,m:$('#fm').value,a:$('#fa').value.trim(),b:$('#fb').value.trim()};sel.clear();draw3();};
   $('#fall').onclick=()=>{filt=null;sel.clear();draw3();};
   $('#sc').onchange=colStat;
@@ -1607,6 +1613,12 @@ function view3(){
   $('#selvis').onclick=()=>{visibleIdx().forEach(i=>sel.add(i));draw3();};
   $('#markcol').onclick=()=>form3('col');
   draw3();drawFinds();gate3();
+}
+// 실마리: 담당별 두 단계. 어디를 볼지 → 기준. 어느 행이 이상한지는 알려 주지 않는다. 연 횟수는 정리 결과 코드(hn)에 남는다
+function hint3(){
+  const m=META[S.ds.key],h=m&&m.hints;if(!h){$('#hint3').innerHTML='';return;}const n=S.s3.hint||0;
+  $('#hint3').innerHTML=h.slice(0,n).map((t,i)=>`<div class="msg info">실마리 ${i+1} · ${esc(t)}</div>`).join('')+(n<h.length?`<button class="btn link" id="hbtn">실마리 ${n+1} 보기</button>`:'');
+  const b=$('#hbtn');if(b)b.onclick=()=>{S.s3.hint=n+1;save();hint3();};
 }
 function fmUI(){const m=$('#fm').value;$('#fa').hidden=m==='blank'||m==='notblank';$('#fb').hidden=!(m==='in'||m==='out');$('#fa').placeholder=(m==='in'||m==='out')?'최솟값':'글자';}
 function visibleIdx(){
@@ -1640,13 +1652,15 @@ function colStat(){
   const ns=vals.filter(isNum).map(Number);
   $('#sstat').innerHTML=`빈칸 <b>${nb}</b> · 값 종류 <b>${Object.keys(cnt).length}</b> · 많은 값 ${top||'-'}${ns.length===vals.length-nb&&ns.length?` · 최소 <b>${Math.min(...ns)}</b> · 최대 <b>${Math.max(...ns)}</b>`:''}`;
 }
+const REASONS=['값이 범위 밖','빈칸이 많음','모든 값이 같음','같은 행이 반복됨','주소와 맞지 않음'];
 function form3(kind){
   const f=$('#form3'),d=S.ds;
   if(kind==='row'&&!sel.size){f.innerHTML='<div class="msg bad">표에서 행을 먼저 골라 주세요.</div>';return;}
   const opts=d.headers.map((h,c)=>`<option value="${c}">${esc(h)}</option>`).join('');
   f.innerHTML=`<div class="ask" style="margin-top:12px">
    ${kind==='row'?`<b>${sel.size}개 행</b>, 왜 이상한가요?`:`<b>어느 열</b>이 왜 이상한가요? <select id="fcol">${opts}</select>`}
-   <input type="text" id="frea" style="width:100%;margin:8px 0" placeholder="${kind==='row'?'이유':'이유'}">
+   <div class="row" style="gap:14px;margin-top:6px">${REASONS.map(r=>`<button class="btn link rch">${r}</button>`).join('')}<button class="btn link" id="rself">직접 쓰기</button></div>
+   <input type="text" id="frea" style="width:100%;margin:8px 0" placeholder="이유">
    ${kind==='row'?`<div class="row">
      <label><input type="radio" name="act" value="keep" checked> 둔다</label>
      <label><input type="radio" name="act" value="hide"> 숨긴다</label>
@@ -1655,6 +1669,8 @@ function form3(kind){
    <div class="row" style="margin-top:10px"><button class="btn" id="fsave">기록</button><button class="btn ghost" id="fcancel">취소</button><span id="fmsg" class="hint"></span></div></div>`;
   $$('input[name=act]').forEach(r=>r.onchange=()=>{$('#fixrow').hidden=r.value!=='fix'||!r.checked;});
   const fixc=$('#fixc');if(fixc){fixc.onchange=()=>{$('#fixv').value=S.ds.rows[[...sel][0]][+fixc.value];};fixc.onchange();}
+  $$('.rch').forEach(b=>b.onclick=()=>{$('#frea').value=b.textContent;});
+  $('#rself').onclick=()=>{$('#frea').value='';$('#frea').focus();};
   $('#fcancel').onclick=()=>f.innerHTML='';
   $('#fsave').onclick=()=>{
     const reason=$('#frea').value.trim();if(reason.length<3){$('#fmsg').textContent='이유를 적어 주세요.';return;}
