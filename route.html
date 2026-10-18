@@ -1136,6 +1136,8 @@ function w13O(cards,diff,qp){
    앱의 길 찾기는 "기준이 바뀌면 최적이 바뀐다"를 보여 주는 작은 모형이다. 실제 지도 앱의 방법과 같지 않다. */
 var CRIT11=[{k:'fast',t:'빨리'},{k:'safe',t:'안전시설 많이'},{k:'signal',t:'신호등 있는 횡단보도'},{k:'big',t:'밝은 큰길'},{k:'familiar',t:'익숙한 길'}];
 var GUESS11=[{k:'fast',t:'빨리 · 짧게'},{k:'big',t:'큰길'},{k:'safe',t:'안전시설'},{k:'unknown',t:'잘 모르겠다'}];
+// 2차시 앞뒤에 같은 질문 "지도 앱 추천 길은 믿을 만할까?" (값 1~4, 높을수록 믿음)
+var TRUST11=[{v:4,t:'믿을 만하다'},{v:3,t:'대체로 믿을 만하다'},{v:2,t:'잘 모르겠다'},{v:1,t:'그대로 믿기 어렵다'}];
 var WALK_M_PER_MIN=67; // 걷는 빠르기 약 4km/h
 var NEAR_M=30;         // 길 둘레로 세는 거리
 var P_W11='SPARK-W11:';
@@ -1221,7 +1223,11 @@ function w11Agg(list){
   const mean=(key,f)=>{const v=list.map(c=>c[key]&&c[key][f]).filter(Number.isFinite);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;};
   const stat={};['len','cctv','bell','ns','cam'].forEach(f=>stat[f]={my:mean('my',f),ai:mean('ai',f)});
   const firstSame=new Set([...teams.values()].map(c=>rankOrder(c.rt)[0])).size;
-  return {n:list.length,teams:teams.size,avg,first,guess,stat,scaryOnAi:list.reduce((a,c)=>a+(c.so||0),0),scary:list.reduce((a,c)=>a+(c.sc||0),0),firstKinds:firstSame};
+  // 앞뒤 질문: 둘 다 답한 학생만 짝지어 비교한다
+  const pr=list.filter(c=>Number.isFinite(c.q0)&&Number.isFinite(c.q1)),m=k=>pr.length?pr.reduce((a,c)=>a+c[k],0)/pr.length:null;
+  const dist=k=>[1,2,3,4].map(v=>pr.filter(c=>c[k]===v).length);
+  const trust={pairs:pr.length,before:m('q0'),after:m('q1'),down:pr.filter(c=>c.q1<c.q0).length,same:pr.filter(c=>c.q1===c.q0).length,up:pr.filter(c=>c.q1>c.q0).length,dist0:dist('q0'),dist1:dist('q1')};
+  return {n:list.length,teams:teams.size,avg,first,guess,stat,trust,scaryOnAi:list.reduce((a,c)=>a+(c.so||0),0),scary:list.reduce((a,c)=>a+(c.sc||0),0),firstKinds:firstSame};
 }
 
 /* 통학로 진단 · 경로 비교 모드 「AI 추천은 누구의 기준인가」(W11, 위 띠 A). 공모전 차시(docs/공모전/수업지도안.md 7장).
@@ -1236,7 +1242,7 @@ const SVC11=['카카오맵','네이버 지도','그 밖의 지도 앱'];
 const OPT11=['큰길우선','최단거리','편안한길','그 밖의 옵션','옵션을 못 봤다']; // 카카오맵 도보 길찾기 옵션(10/18 확인)
 let G11=null;
 function g11(){if(!G11)G11=roadsLoad(ROADS);return G11;}
-function fresh11(){return{step:0,max:0,info:{ban:'',mo:'',no:''},start:null,my:[],scary:[],none:false,svc:'',opt:'',ai:[],aiRep:false,img:null,align:null,ovo:0.6,guess:'',why:'',w:{fast:1,safe:0,signal:0,big:0,familiar:0},rm:{},rt:{},tr:'',s1:'',s2:''};}
+function fresh11(){return{step:0,max:0,info:{ban:'',mo:'',no:''},start:null,my:[],scary:[],none:false,svc:'',opt:'',ai:[],aiRep:false,img:null,align:null,ovo:0.6,q0:0,r0:'',q1:0,r1:'',guess:'',why:'',w:{fast:1,safe:0,signal:0,big:0,familiar:0},rm:{},rt:{},tr:'',s1:'',s2:''};}
 let S11=fresh11();
 const SAMPLE11=typeof location!=='undefined'&&location.hash==='#w11sample';
 function save11(){if(SAMPLE11)return;try{localStorage.setItem(KEY11,JSON.stringify(S11));}catch(e){try{const t=Object.assign({},S11,{img:null});localStorage.setItem(KEY11,JSON.stringify(t));}catch(e2){}}}
@@ -1268,6 +1274,10 @@ const nearSchool=p=>distM(p,[SCHOOL.lat,SCHOOL.lng])<=150;
 const myPath=()=>S11.start?[[S11.start.lat,S11.start.lng],...S11.my]:[];
 const aiPath=()=>S11.start?[[S11.start.lat,S11.start.lng],...S11.ai]:[];
 
+/* 앞뒤 같은 질문(믿을 만한가) */
+function trustBtns(k){return `<div class="row" id="tb-${k}">${TRUST11.map(t=>`<button class="btn ghost" data-v="${t.v}" aria-pressed="${S11[k]===t.v}">${t.t}</button>`).join('')}</div>`;}
+function bindTrust(k,after){$$(`#tb-${k} button`).forEach(b=>b.onclick=()=>{S11[k]=+b.dataset.v;$$(`#tb-${k} button`).forEach(x=>x.setAttribute('aria-pressed',x===b));save11();after();});}
+
 /* ===== 1. 출발점 ===== */
 function v11a(){
   const i=S11.info,G=g11();
@@ -1282,7 +1292,10 @@ function v11a(){
    <div><div class="box"><h3>출발점 고르기</h3><div id="sts">${G.starts.map(s=>`<button class="btn ghost stb" data-id="${s.id}" aria-pressed="${S11.start&&S11.start.id===s.id}" style="display:block;width:100%;text-align:left;margin-bottom:8px">${esc(s.id)} · ${esc(s.name)}</button>`).join('')}
      <button class="btn ghost stb" data-id="X" aria-pressed="${!!(S11.start&&S11.start.id==='X')}" style="display:block;width:100%;text-align:left">지도에서 직접 고르기</button></div>
      <div id="stm"></div></div></div></div>
+  <div class="box"><div class="ask" style="margin-top:0">지도 앱이 추천하는 길은 믿을 만할까요?</div>${trustBtns('q0')}
+    <label style="display:block;margin-top:10px">그렇게 생각한 까닭 <span class="hint">한 줄, 비워도 돼요</span><input type="text" id="r0" style="width:100%;margin-top:4px" maxlength="60" value="${esc(S11.r0)}"></label></div>
   <div id="n11a"></div>`;
+  bindTrust('q0',gate11a);$('#r0').oninput=e=>{S11.r0=e.target.value;save11();};
   [['b11','ban'],['m11','mo'],['n11','no']].forEach(([id,k])=>{$('#'+id).oninput=e=>{S11.info[k]=e.target.value.trim();save11();setWho11();gate11a();};});
   $('#back9').onclick=()=>{exit11();render();};
   const m=maps.a=makeMap('map11a',[37.6505,127.1205],15);bindBases('map11a',m);
@@ -1300,7 +1313,7 @@ function v11a(){
     S11.start={id:'X',name:'직접 고른 곳',lat:p[0],lng:p[1]};S11.my=[];S11.ai=[];S11.aiRep=false;S11.scary=[];$('#stm').innerHTML='';save11();draw();gate11a();});
   draw();gate11a();
 }
-function gate11a(){const i=S11.info,ok=i.ban&&i.mo&&i.no&&S11.start;$('#n11a').innerHTML=next11(0,!!ok);bind11(0);}
+function gate11a(){const i=S11.info,ok=i.ban&&i.mo&&i.no&&S11.start&&S11.q0;$('#n11a').innerHTML=next11(0,!!ok);bind11(0);}
 
 /* ===== 2. 내 길 ===== */
 function v11b(){
@@ -1380,7 +1393,7 @@ function v11c(){
   const overlay=()=>{if(ov){ov.remove();ov=null;}if(!S11.img||!S11.align)return;ov=document.createElement('img');ov.src=S11.img;ov.className='capov';ov.alt='';ov.style.opacity=S11.ovo;if(!m.getPane('cap'))m.createPane('cap').style.zIndex=350;m.getPane('cap').appendChild(ov);place();};
   m.on('zoomstart',()=>{if(ov)ov.style.display='none';});m.on('zoomend viewreset',place);
   const cap=()=>{const c=$('#cap11');
-    if(!S11.img){c.innerHTML='<div class="drop" id="pz" tabindex="0" role="button" aria-label="캡처 붙여 넣기"><b>캡처를 여기에 붙여 넣기(Ctrl+V)</b>또는 눌러서 그림 고르기</div>';
+    if(!S11.img){c.innerHTML='<div class="drop" id="pz" tabindex="0" role="button" aria-label="캡처 붙여 넣기"><b>캡처를 여기에 붙여 넣기(Ctrl+V)</b>또는 눌러서 그림 고르기</div><div class="hint" style="margin-top:6px">카카오맵 화면에서 <b>Win+Shift+S</b>로 지도 부분을 잡은 뒤 여기서 Ctrl+V</div>';
       const pz=$('#pz');pz.onclick=()=>pf.click();pz.onkeydown=e=>{if(e.key==='Enter'||e.key===' ')pf.click();};return;}
     const a=S11.align,mk=(q,t)=>q?`<span class="pinmk" style="left:${q[0]/S11.imgW*100}%;top:${q[1]/S11.imgH*100}%">${t}</span>`:'';
     c.innerHTML=`<div class="capbox" id="capimg"><img src="${S11.img}" alt="추천 길 캡처">${pick?'':mk(a&&a.p1,'출발')+mk(a&&a.p2,'도착')}</div>
@@ -1468,24 +1481,27 @@ function gate11e(loud){const a=rankMsg(S11.rm),b=rankMsg(S11.rt)||(loud&&!rankOk
 
 /* ===== 6. 결과 카드 ===== */
 function code11(){const st=stats11(),i=S11.info,pick=s=>({len:s.len,cctv:s.cctv,bell:s.bell,ns:s.ns,cam:s.cam});
-  return w11Enc({v:1,b:i.ban,m:i.mo,n:i.no,st:S11.start.id,svc:S11.svc,opt:S11.opt,my:pick(st.my),ai:pick(st.ai),sc:S11.scary.length,so:st.so,g:S11.guess,gw:S11.why.trim(),rm:S11.rm,rt:S11.rt,tr:S11.tr.trim(),s1:S11.s1.trim(),s2:S11.s2.trim()});}
+  return w11Enc({v:1,b:i.ban,m:i.mo,n:i.no,st:S11.start.id,svc:S11.svc,opt:S11.opt,my:pick(st.my),ai:pick(st.ai),sc:S11.scary.length,so:st.so,g:S11.guess,gw:S11.why.trim(),rm:S11.rm,rt:S11.rt,tr:S11.tr.trim(),s1:S11.s1.trim(),s2:S11.s2.trim(),q0:S11.q0||undefined,r0:S11.r0.trim(),q1:S11.q1||undefined,r1:S11.r1.trim()});}
 const sent11=()=>`추천 길은 ${S11.s1.trim()||'___'}을(를) 중요하게 본 결과다. 그래서 나는 ${S11.s2.trim()||'___'}.`;
 function v11f(){
   const ok=ok11b().ok&&ok11c()&&ok11d()&&ok11e();
   if(!ok)return need11('결과 카드','1~5단계를 마치면 카드를 만들 수 있어요.');
   $('#view').innerHTML=`<div class="vh"><h2>결과 카드</h2></div>
+  <div class="box"><div class="ask" style="margin-top:0">지금 다시: 지도 앱이 추천하는 길은 믿을 만할까요?</div>${trustBtns('q1')}
+    <label style="display:block;margin-top:10px">생각이 그대로이거나 바뀐 까닭<input type="text" id="r1" style="width:100%;margin-top:4px" maxlength="60" value="${esc(S11.r1)}"></label></div>
   <div class="box"><h3>한 문장</h3><p style="font-size:18px;line-height:2.1;margin:0">추천 길은 <input type="text" id="s1" style="width:220px" maxlength="30" value="${esc(S11.s1)}" placeholder="빨리 가는 것">을(를) 중요하게 본 결과다. 그래서 나는 <input type="text" id="s2" style="width:360px;max-width:100%" maxlength="50" value="${esc(S11.s2)}" placeholder="…">.</p></div>
   <div class="box"><h3>카드에 넣을 지도</h3><div id="map11f" class="map" style="height:auto;width:100%;aspect-ratio:860/652;max-width:760px"></div></div>
-  <div class="box"><h3>경로 비교 카드</h3><div id="c11"><div class="hint">문장 두 칸을 채우면 만들어져요.</div></div></div>
+  <div class="box"><h3>경로 비교 카드</h3><div id="c11"><div class="hint">위 질문에 답하고 문장 두 칸을 채우면 만들어져요.</div></div></div>
   <div class="box"><h3>경로 비교 코드 <span class="hint">하이러닝에 붙여요</span></h3><div class="code" id="k11"></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="kc11">코드 복사</button><span class="hint" id="km11"></span></div></div>`;
   const m=maps.f=makeMap('map11f',[S11.start.lat,S11.start.lng],15);startMk(m,S11.start);
   const fam=famFar(g11(),myPath());calc11=rankOk(S11.rt)?bestRoute(g11(),[S11.start.lat,S11.start.lng],[SCHOOL.lat,SCHOOL.lng],rankWeights(S11.rt),fam):null;
   line11(m,myPath(),'my');line11(m,aiPath(),'ai');if(calc11)line11(m,calc11.path,'calc',{opacity:.75});S11.scary.forEach((s,i)=>scaryMk(m,s,i));fit11(m,[myPath(),aiPath(),calc11?calc11.path:[]]);
   let shot=null,tm=null;
   const make=async()=>{const k=code11();$('#k11').textContent=k;
-    if(!(S11.s1.trim()&&S11.s2.trim())){$('#c11').innerHTML='<div class="hint">문장 두 칸을 채우면 만들어져요.</div>';return;}
+    if(!(S11.s1.trim()&&S11.s2.trim()&&S11.q1&&S11.r1.trim().length>=2)){$('#c11').innerHTML='<div class="hint">위 질문에 답하고 문장 두 칸을 채우면 만들어져요.</div>';return;}
     if(!shot)return;showCard('#c11',await card11(shot),'경로 비교 카드');done11(4);if(S11.max<5){S11.max=5;save11();rail11();}};
   const upd=()=>{save11();clearTimeout(tm);tm=setTimeout(make,400);};
+  bindTrust('q1',upd);$('#r1').oninput=e=>{S11.r1=e.target.value;upd();};
   $('#s1').oninput=e=>{S11.s1=e.target.value;upd();};$('#s2').oninput=e=>{S11.s2=e.target.value;upd();};
   $('#kc11').onclick=()=>copyText(code11(),$('#km11'),$('#k11'));
   $('#k11').textContent=code11();
@@ -1527,7 +1543,7 @@ function sample11(){
   const my=bestRoute(G,[s.lat,s.lng],[SCHOOL.lat,SCHOOL.lng],{fast:0,big:3}).path,ai=s.ai?[[s.lat,s.lng],...s.ai]:bestRoute(G,[s.lat,s.lng],[SCHOOL.lat,SCHOOL.lng],{fast:3}).path;
   const mid=my[Math.floor(my.length*0.45)];
   return Object.assign(fresh11(),{step:5,max:5,info:{ban:'3',mo:'2',no:'14'},start:{id:s.id,name:s.name,lat:s.lat,lng:s.lng},my:thin(my,3),ai:s.ai?s.ai.map(q=>q.slice()):thin(ai,3),aiRep:!!s.ai,scary:[{lat:mid[0]+0.0002,lng:mid[1],why:'차가 빨리 돌아 나오는 골목'}],
-    svc:'카카오맵',opt:'큰길우선',guess:'big',why:'추천 길이 큰길을 따라가고 내 길보다 짧다',w:{fast:2,safe:3,signal:1,big:0.5,familiar:0},
+    svc:'카카오맵',opt:'큰길우선',q0:4,r0:'많이 쓰는 앱이라서',q1:2,r1:'빠른 길만 보고 신호등 없는 횡단보도는 안 본다',guess:'big',why:'추천 길이 큰길을 따라가고 내 길보다 짧다',w:{fast:2,safe:3,signal:1,big:0.5,familiar:0},
     rm:{fast:3,safe:1,signal:2,big:4,familiar:5},rt:{fast:2,safe:1,signal:3,big:4,familiar:5},tr:'늦지 않는 것도 중요하지만 어두운 골목은 피하고 싶다',s1:'큰길로 빨리 가는 것',s2:'신호등 있는 횡단보도로 조금 돌아서 간다'});
 }
 
@@ -1543,6 +1559,7 @@ function teacher11Bind(){
      ${CRIT11.map(c=>`<tr><th>${c.t}</th><td>1순위 ${A.first[c.k]}모둠 · 평균 ${f(A.avg[c.k])}위</td></tr>`).join('')}
      <tr><th>추천 길이 중요하게 본 것(추측)</th><td>${GUESS11.map(g=>`${g.t} ${A.guess[g.k]}`).join(' · ')}</td></tr>
      <tr><th>평균 내 길 / 추천 길</th><td>${[['len','길이 m'],['cctv','CCTV'],['bell','비상벨'],['ns','신호등 없는 횡단보도'],['cam','단속카메라']].map(([k,t])=>`${t} ${f(A.stat[k].my)} / ${f(A.stat[k].ai)}`).join(' · ')}</td></tr>
+     <tr><th>추천 길은 믿을 만한가(4점)</th><td>${A.trust.pairs?`앞 ${f(A.trust.before)} → 뒤 ${f(A.trust.after)} · ${A.trust.pairs}명 중 낮아짐 ${A.trust.down} · 그대로 ${A.trust.same} · 높아짐 ${A.trust.up}`:'앞뒤 모두 답한 코드 없음'}</td></tr>
      <tr><th>무서운 곳</th><td>${A.scary}곳 중 추천 길 위 ${A.scaryOnAi}곳</td></tr></table>`;};
 }
 
