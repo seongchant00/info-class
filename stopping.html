@@ -918,13 +918,13 @@ table.meas td.fb3{white-space:normal;font-size:13px;min-width:200px}
    형식: docs/SPARK-LAB-시리즈-설계.md 4장. node 시험이 vm으로 읽으므로 전역은 var·function으로만 둔다. */
 var TEAM_PREFIX='SPARK-TEAM:', TEAM_STAR_PREFIX='SPARK-STAR:', TEAM_V=1;
 var TEAM_STEP={s:'W9-1 통학로 진단을',t:'W9-2 정지거리 측정을',o:'W13 문제 정의를',r:'W18~19 반복 테스트를'};
-var TEAM_CUT='코드가 중간에 잘렸어요. 하이러닝에서 다시 통째로 복사해 주세요.';
+var TEAM_CUT='코드가 중간에 잘렸어요. AI 교수·학습 플랫폼에서 다시 통째로 복사해 주세요.';
 function teamB64(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
 function teamUnb64(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return JSON.parse(decodeURIComponent(escape(atob(s))));}
 function teamNew(b,m){return{v:TEAM_V,b:String(b),m:String(m),l:{}};}
 function teamSet(team,key,val,today){const out=Object.assign({},team);out.l=Object.assign({},team.l||{});out.l[key]=today;out[key]=val;return out;}
 function teamEnc(team){return TEAM_PREFIX+teamB64(team);}
-// 하이러닝에서 옮기면 긴 코드 중간에 줄바꿈·띄어쓰기가 끼어든다. 뒤에 붙은 다른 글과 가르려고
+// AI 교수·학습 플랫폼에서 옮기면 긴 코드 중간에 줄바꿈·띄어쓰기가 끼어든다. 뒤에 붙은 다른 글과 가르려고
 // 접두어 뒤의 덩어리를 앞에서부터 이어 붙여 읽히는 가장 긴 것을 쓴다. 접두어가 없으면 null.
 function teamBody(text,prefix){
   const i=text.indexOf(prefix);if(i<0)return null;
@@ -933,7 +933,7 @@ function teamBody(text,prefix){
   throw new Error(TEAM_CUT);
 }
 function teamClean(text){return String(text||'').replace(/[\u200b-\u200d\u2060\ufeff\u00ad]/g,'');}  // 웹 편집기가 끼워 넣는 보이지 않는 글자
-// 하이러닝 게시물에는 차시마다 붙인 코드가 쌓인다. 모두 읽어 가장 최근(l의 마지막 날짜, 같으면 채운 칸이 많은 것)을 쓴다.
+// AI 교수·학습 플랫폼 게시물에는 차시마다 붙인 코드가 쌓인다. 모두 읽어 가장 최근(l의 마지막 날짜, 같으면 채운 칸이 많은 것)을 쓴다.
 function teamLatest(text){
   let best=null,bd='',bc=-1,err=null;
   for(let i=text.indexOf(TEAM_PREFIX);i>=0;i=text.indexOf(TEAM_PREFIX,i+1)){
@@ -1083,7 +1083,7 @@ function showCard(sel,cv,name){
   const url=cv.toDataURL('image/png');
   $(sel).innerHTML=`<img class="cardprev" src="${url}" alt="${name} 미리보기"><div class="row" style="margin-top:10px"><button class="btn sign">${name} 이미지 복사</button><span class="hint"></span></div><div class="fallback" hidden><div class="msg info">그림을 <b>오른쪽 클릭 → 이미지 복사</b> 하세요.</div><img src="${url}" alt="${name}"></div>`;
   const b=$(sel+' .btn'),m=$(sel+' .row .hint'),fb=$(sel+' .fallback');
-  b.onclick=async()=>{try{const blob=await new Promise(r=>cv.toBlob(r,'image/png'));await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);m.textContent='복사했어요. 하이러닝에서 Ctrl+V';}catch(e){fb.hidden=false;m.textContent='';}};
+  b.onclick=async()=>{try{const blob=await new Promise(r=>cv.toBlob(r,'image/png'));await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);m.textContent='복사했어요. AI 교수·학습 플랫폼에서 Ctrl+V';}catch(e){fb.hidden=false;m.textContent='';}};
 }
 async function copyText(t,msgEl,boxEl){
   try{await navigator.clipboard.writeText(t);msgEl.textContent='복사했어요.';}
@@ -1549,7 +1549,7 @@ function teacher(){
    <h3>마퀸 버튼</h3>
    <table><tr><th>A</th><td>속도 단계 1 느림 → 2 보통 → 3 빠름 (속도 값 60·120·200)</td></tr><tr><th>A+B</th><td>멈춤 기준 T 10 → 15 → … → 40cm</td></tr><tr><th>B</th><td>출발 → 멈추면 ✕</td></tr></table>
    <h3>자주 막히는 곳</h3>
-   <table><tr><th>1단계</th><td>모둠 코드가 없음 → 같은 모둠원의 하이러닝 글에서 복사. 모둠 번호가 다르면 막힘(의도)</td></tr>
+   <table><tr><th>1단계</th><td>모둠 코드가 없음 → 같은 모둠원의 AI 교수·학습 플랫폼 글에서 복사. 모둠 번호가 다르면 막힘(의도)</td></tr>
    <tr><th>3단계</th><td>제동거리 칸이 틀림 → T − g를 직접 계산하는 것이 목적(의도). g가 T보다 큼 → 초음파가 잘못 읽어 일찍 멈춤, 다시 재기</td></tr>
    <tr><th>4단계</th><td>축을 바꿔 고름 → 의도된 막힘. "속도가 빠를수록"을 말할 수 있는 축은?</td></tr>
    <tr><th>6단계</th><td>평균을 고름 → 몇 번 부딪힐지 세게 함. 최댓값 + 여유로 가는 것이 목표</td></tr></table>`;
