@@ -715,6 +715,8 @@ header.top{display:flex;align-items:center;gap:22px;padding:0 24px;height:64px;b
 header.top h1{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em;padding-left:22px;border-left:1px solid var(--line);line-height:28px}
 header.top .who{margin-left:auto;font-size:14px;color:var(--sub);font-variant-numeric:tabular-nums}
 header.top .who b{color:var(--ink)}
+/* 첫 화면(수업 목록)으로 나가기. 학생 PC의 파일로 열어도 가도록 온라인 주소 */
+header.top .home{font-size:14px;color:var(--ink);white-space:nowrap;padding-left:18px;border-left:1px solid var(--line);line-height:28px}
 
 .main{flex:1;display:flex;min-height:0}
 
@@ -878,7 +880,9 @@ table.dt tr.sel td{background:#e7eef8}
   .stop{width:auto;flex:none;grid-template-columns:30px auto;gap:6px;min-height:44px;padding-right:10px}
   .stop .trk i.up,.stop .trk i.dn{display:none}
   .stop .t{white-space:nowrap;font-size:14px}
-  header.top .who{margin-left:0;width:100%}
+  header.top .who{margin-left:0;width:100%;order:3}
+  header.top h1{order:2;width:100%}
+  header.top .home{order:1;margin-left:auto;padding-left:0;border-left:none}
   #teacher{inset:8px;padding:16px}
   section.view{padding:18px 16px 40px}
   .lead{margin-left:0}
@@ -905,6 +909,7 @@ table.meas td.fb3{white-space:normal;font-size:13px;min-width:200px}
   </div>
   <h1>통학로 진단</h1>
   <div class="who" id="who"></div>
+  <a class="home" href="https://seongchant00.github.io/info-class/">수업 목록</a>
 </header>
 <div class="main">
   <nav class="rail" id="rail" aria-label="단계"></nav>
