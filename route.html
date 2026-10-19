@@ -2027,6 +2027,20 @@ function rawCode(k){const ll=defaultLL(k);return P_CLEAN+enc({v:1,k,b:'',m:'',n:
 function teamCode(){const s=S.s6,a=around(merged(),s.star,s.r);
   const star={y:+s.star.lat.toFixed(6),x:+s.star.lng.toFixed(6),r:s.r,p:s.place,c:s.checks,e:s.exp||'',n:{cctv:a.c.cctv,bell:a.c.bell,cw:a.c.cw,cam:a.c.cam,ns:a.ns}};
   return teamEnc(teamSet(teamNew(S.info.ban,S.info.mo),'s',star,teamToday()));}
+// 다른 PC에서 이어 가기: 지난 시간 정리 결과 코드로 1~4단계를 마친 상태를 되살리고 4단계(지도)에서 다시 시작한다.
+// 코드에 없는 것(속성 구분 기록, 이상한 점의 이유)은 되살리지 않고, 카드 ①에는 "지난 시간"으로 밝힌다
+function restoreClean(o){
+  const d=DS[o.k];S=fresh();S.restored=true;
+  S.info={ban:o.b||'',mo:o.m||'',no:o.n||'',role:o.k};
+  S.ds={key:o.k,file:d.file,headers:d.headers,rows:d.rows};
+  S.s1.rawSeen=true;S.s2.ok1=true;S.s2.checked=true;
+  const hid=[...unr(o.h)];if(hid.length)S.s3.find.push({kind:'row',rows:hid.sort((a,b)=>a-b),reason:'지난 시간에 숨김',act:'hide'});
+  for(const [r,c,v] of o.f||[])S.s3.find.push({kind:'row',rows:[r],reason:'지난 시간에 고침',act:'fix',fix:{c,val:v,old:d.rows[r]?d.rows[r][c]:''}});
+  S.s3.hint=o.hn||0;
+  const ll=defaultLL(o.k);S.s4={la:o.la>=0?o.la:ll.la,lo:o.lo>=0?o.lo:ll.lo,ok:false,line:o.s||'',thumb:null};
+  if(o.w)S.s7={cant:o.w.c||'',how:o.w.h||'',robot:o.w.r||''};
+  S.step=3;S.max=3;save();
+}
 function parseClean(txt){
   txt=(txt||'').trim().split(OLD_CLEAN).join(P_CLEAN); const i=txt.indexOf(P_CLEAN); if(i<0) throw new Error('정리 결과 코드가 아니에요. "SPARK-SP:"로 시작하는 글자를 통째로 붙여 넣어 주세요.');
   const o=dec(txt.slice(i+P_CLEAN.length).split(/\s/)[0]); if(!o||!META[o.k]) throw new Error('코드를 읽을 수 없어요. 다시 복사해 주세요.'); return o;
@@ -2065,8 +2079,10 @@ function view1(){
       <label>모둠 <input type="number" id="mo" min="1" max="9" style="width:70px" value="${esc(i.mo)}"></label>
       <label>번호 <input type="number" id="no" min="1" max="40" style="width:80px" value="${esc(i.no)}"></label>
     </div>
-    <div class="row" style="margin-top:6px;justify-content:space-between"><span class="hint">이름은 적지 않아요.</span><span class="row" style="gap:18px"><button class="btn link" id="w11">경로 비교</button><button class="btn link" id="wrep">오류 신고</button><button class="btn link" id="w13">모둠 코드로 이어서</button><button class="btn link" id="tv1">모둠 코드 보기</button></span></div>
+    <div class="row" style="margin-top:6px;justify-content:space-between"><span class="hint">이름은 적지 않아요.</span><span class="row" style="gap:18px"><button class="btn link" id="rs1">지난 시간 코드로 이어서</button><button class="btn link" id="w11">경로 비교</button><button class="btn link" id="wrep">오류 신고</button><button class="btn link" id="w13">모둠 코드로 이어서</button><button class="btn link" id="tv1">모둠 코드 보기</button></span></div>
   </div>
+  <div class="box" id="rsbox" hidden><h3>지난 시간 정리 결과 코드</h3><textarea id="rsin" rows="3" placeholder="SPARK-SP:…"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn" id="rsok">이어서 하기</button></div><div id="rsm"></div></div>
   <div class="box">
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="CSV 파일 열기"><b>내 담당 CSV 파일을 끌어다 놓기</b>또는 눌러서 고르기</div>
     <input type="file" id="file" accept=".csv,text/csv" hidden>
@@ -2076,6 +2092,8 @@ function view1(){
   <div id="rawbox"></div>`;
   ['ban','mo','no'].forEach(k=>{$('#'+k).oninput=e=>{S.info[k]=e.target.value.trim();save();setWho();};});
   $('#tv1').onclick=teamViewOpen;
+  $('#rs1').onclick=()=>{const b=$('#rsbox');b.hidden=!b.hidden;if(!b.hidden)$('#rsin').focus();};
+  $('#rsok').onclick=()=>{try{restoreClean(parseClean($('#rsin').value));render();}catch(e){$('#rsm').innerHTML=`<div class="msg bad">${esc(e.message||'코드를 읽을 수 없어요.')}</div>`;}};
   $('#wrep').onclick=()=>{enterR();SR=Object.assign(freshR(),loadR()||{});renderR();};
   $('#w11').onclick=()=>{enter11();S11=Object.assign(fresh11(),load11()||{});render11();};
   $('#w13').onclick=()=>{enter13();S13=Object.assign(fresh13(),load13()||{});render13();};
@@ -2599,6 +2617,7 @@ async function card1(){
   // 왼쪽 아래: 속성 구분
   y=sec(g,40,462,500,486,'속성 구분 (내가 고른 것)');
   const cls=Object.entries(S.s2.cls).filter(([,v])=>v);
+  if(!cls.length&&S.restored){g.fillStyle=K.sub;g.font=`20px ${FONT}`;g.fillText('지난 시간에 구분함(다른 컴퓨터)',60,y);}
   const groups=[['C','범주형'],['N','수치형'],['B','헷갈림']];
   for(const [v,l] of groups){const cs=cls.filter(([,x])=>x===v);if(!cs.length)continue;g.fillStyle=K.ink;g.font=`bold 21px ${FONT}`;g.fillText(l,60,y);y+=8;
     let x=60;y+=26;g.font=`19px ${FONT}`;
