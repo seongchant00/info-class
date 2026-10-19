@@ -2030,13 +2030,19 @@ function teamCode(){const s=S.s6,a=around(merged(),s.star,s.r);
   return teamEnc(teamSet(teamNew(S.info.ban,S.info.mo),'s',star,teamToday()));}
 // 다른 PC에서 이어 가기: 지난 시간 정리 결과 코드로 1~4단계를 마친 상태를 되살리고 4단계(지도)에서 다시 시작한다.
 // 코드에 없는 것(속성 구분 기록, 이상한 점의 이유)은 되살리지 않고, 카드 ①에는 "지난 시간"으로 밝힌다
+function applyClean(o){const d=DS[o.k];S.s3.find=[];
+  const hid=[...unr(o.h)];if(hid.length)S.s3.find.push({kind:'row',rows:hid.sort((a,b)=>a-b),reason:'지난 시간에 숨김',act:'hide'});
+  for(const [r,c,v] of o.f||[])S.s3.find.push({kind:'row',rows:[r],reason:'지난 시간에 고침',act:'fix',fix:{c,val:v,old:d.rows[r]?d.rows[r][c]:''}});}
+// 지난 시간에 없었던 학생: 담당 하나를 맡아 원본으로 5단계(모둠 합치기)부터. 같은 담당 모둠원의 코드를 받으면 그 정리를 쓴다
+function startAbsent(k){const d=DS[k],info={...S.info,role:k};S=fresh();S.absent=true;S.info=info;
+  S.ds={key:k,file:d.file,headers:d.headers,rows:d.rows};S.s1.rawSeen=true;
+  const ll=defaultLL(k);S.s4={la:ll.la,lo:ll.lo,ok:false,line:'',thumb:null};S.step=4;S.max=4;save();}
 function restoreClean(o){
   const d=DS[o.k];S=fresh();S.restored=true;
   S.info={ban:o.b||'',mo:o.m||'',no:o.n||'',role:o.k};
   S.ds={key:o.k,file:d.file,headers:d.headers,rows:d.rows};
   S.s1.rawSeen=true;S.s2.ok1=true;S.s2.checked=true;
-  const hid=[...unr(o.h)];if(hid.length)S.s3.find.push({kind:'row',rows:hid.sort((a,b)=>a-b),reason:'지난 시간에 숨김',act:'hide'});
-  for(const [r,c,v] of o.f||[])S.s3.find.push({kind:'row',rows:[r],reason:'지난 시간에 고침',act:'fix',fix:{c,val:v,old:d.rows[r]?d.rows[r][c]:''}});
+  applyClean(o);
   S.s3.hint=o.hn||0;
   const ll=defaultLL(o.k);S.s4={la:o.la>=0?o.la:ll.la,lo:o.lo>=0?o.lo:ll.lo,ok:false,line:o.s||'',thumb:null};
   if(o.w)S.s7={cant:o.w.c||'',how:o.w.h||'',robot:o.w.r||''};
@@ -2080,10 +2086,12 @@ function view1(){
       <label>모둠 <input type="number" id="mo" min="1" max="9" style="width:70px" value="${esc(i.mo)}"></label>
       <label>번호 <input type="number" id="no" min="1" max="40" style="width:80px" value="${esc(i.no)}"></label>
     </div>
-    <div class="row" style="margin-top:6px;justify-content:space-between"><span class="hint">이름은 적지 않아요.</span><span class="row" style="gap:18px"><button class="btn link" id="rs1">지난 시간 코드로 이어서</button><button class="btn link" id="w11">경로 비교</button><button class="btn link" id="wrep">오류 신고</button><button class="btn link" id="w13">모둠 코드로 이어서</button><button class="btn link" id="tv1">모둠 코드 보기</button></span></div>
+    <div class="row" style="margin-top:6px;justify-content:space-between"><span class="hint">이름은 적지 않아요.</span><span class="row" style="gap:18px"><button class="btn link" id="rs1">지난 시간 코드로 이어서</button><button class="btn link" id="ab1">지난 시간에 없었어요</button><button class="btn link" id="w11">경로 비교</button><button class="btn link" id="wrep">오류 신고</button><button class="btn link" id="w13">모둠 코드로 이어서</button><button class="btn link" id="tv1">모둠 코드 보기</button></span></div>
   </div>
   <div class="box" id="rsbox" hidden><h3>지난 시간 정리 결과 코드</h3><textarea id="rsin" rows="3" placeholder="SPARK-SP:…"></textarea>
     <div class="row" style="margin-top:8px"><button class="btn" id="rsok">이어서 하기</button></div><div id="rsm"></div></div>
+  <div class="box" id="abbox" hidden><h3>지난 시간에 없었어요</h3><div class="ask">모둠에서 내가 맡을 담당은?</div>
+    <div class="row">${ORDER.map(k=>`<button class="btn ghost" data-ab="${k}">${'①②③④'[META[k].no-1]} ${META[k].label}</button>`).join('')}</div><div id="abm"></div></div>
   <div class="box">
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="CSV 파일 열기"><b>내 담당 CSV 파일을 끌어다 놓기</b>또는 눌러서 고르기</div>
     <input type="file" id="file" accept=".csv,text/csv" hidden>
@@ -2094,6 +2102,8 @@ function view1(){
   ['ban','mo','no'].forEach(k=>{$('#'+k).oninput=e=>{S.info[k]=e.target.value.trim();save();setWho();};});
   $('#tv1').onclick=teamViewOpen;
   $('#rs1').onclick=()=>{const b=$('#rsbox');b.hidden=!b.hidden;if(!b.hidden)$('#rsin').focus();};
+  $('#ab1').onclick=()=>{const b=$('#abbox');b.hidden=!b.hidden;};
+  $$('[data-ab]').forEach(b=>b.onclick=()=>{if(!(S.info.ban&&S.info.mo&&S.info.no)){$('#abm').innerHTML='<div class="msg bad">반·모둠·번호를 먼저 적어 주세요.</div>';return;}startAbsent(b.dataset.ab);render();});
   $('#rsok').onclick=()=>{try{restoreClean(parseClean($('#rsin').value));render();}catch(e){$('#rsm').innerHTML=`<div class="msg bad">${esc(e.message||'코드를 읽을 수 없어요.')}</div>`;}};
   $('#wrep').onclick=()=>{enterR();SR=Object.assign(freshR(),loadR()||{});renderR();};
   $('#w11').onclick=()=>{enter11();S11=Object.assign(fresh11(),load11()||{});render11();};
@@ -2490,18 +2500,23 @@ function view5(){
   $('#view').innerHTML=`
   <div class="vh"><h2>모둠 데이터 합치기</h2></div>
   <div class="box"><h3>① 모둠원 코드</h3>
-    <div class="mem"><b>${'①②③④'[META[S.ds.key].no-1]} ${META[S.ds.key].label}</b><span class="st">나 · 숨긴 행 ${myHidden().size}</span><span></span></div>
+    ${S.absent?`<div class="mem" id="me5"><b>${'①②③④'[META[S.ds.key].no-1]} ${META[S.ds.key].label}</b><div><span class="st">나 · ${S.absentFrom?`${esc(S.absentFrom)}번 코드로 정리 · 숨긴 행 ${myHidden().size}`:'지난 시간 결석 · 원본'}</span>${S.absentFrom?'':`<textarea rows="2" placeholder="같은 담당 모둠원의 SPARK-SP:… (없으면 원본 그대로)"></textarea>`}<div class="m5"></div></div><div class="row">${S.absentFrom?`<button class="btn link rm">다시 받기</button>`:`<button class="btn ghost ok5">받기</button>`}</div></div>`
+    :`<div class="mem"><b>${'①②③④'[META[S.ds.key].no-1]} ${META[S.ds.key].label}</b><span class="st">나 · 숨긴 행 ${myHidden().size}</span><span></span></div>`}
     ${others.map(k=>{const m=S.s5.mem[k];return `<div class="mem" data-k="${k}"><b>${'①②③④'[META[k].no-1]} ${META[k].label}</b>
-      <div>${m?`<span class="st">${m.raw?'담당자 없음 · 원본':`${esc(m.n)}번 · 숨긴 행 ${unr(m.h).size} · 고친 칸 ${(m.f||[]).length}`}</span>`:`<textarea rows="2" placeholder="SPARK-SP:…"></textarea>`}<div class="m5"></div></div>
+      <div>${m?`<span class="st">${m.raw?'담당자 없음 · 원본':`${m.from?esc(m.from)+' ':''}${esc(m.n)}번 · 숨긴 행 ${unr(m.h).size} · 고친 칸 ${(m.f||[]).length}`}</span>`:`<textarea rows="2" placeholder="SPARK-SP:…"></textarea>`}<div class="m5"></div></div>
       <div class="row">${m?`<button class="btn link rm">다시 받기</button>`:`<button class="btn ghost ok5">받기</button><button class="btn ghost raw5" title="담당자가 결석했을 때">담당자 없음</button>`}</div></div>`;}).join('')}
   </div>
   <div id="map5"></div>
   <div id="n5"></div>`;
+  const me=$('#me5');if(me){const ok=$('.ok5',me),rm=$('.rm',me);
+    if(ok)ok.onclick=()=>{try{const o=parseClean($('textarea',me).value);if(o.k!==S.ds.key){$('.m5',me).innerHTML=`<div class="msg bad">${META[o.k].label} 코드예요. 아래 알맞은 칸에 넣어 주세요.</div>`;return;}
+      applyClean(o);S.absentFrom=o.n||'?';const ll=defaultLL(o.k);S.s4.la=o.la>=0?o.la:ll.la;S.s4.lo=o.lo>=0?o.lo:ll.lo;S.s5.merged=false;save();view5();}catch(e){$('.m5',me).innerHTML=`<div class="msg bad">${esc(e.message||'코드를 읽을 수 없어요.')}</div>`;}};
+    if(rm)rm.onclick=()=>{S.s3.find=[];S.absentFrom='';S.s5.merged=false;save();view5();};}
   $$('.mem[data-k]').forEach(el=>{const k=el.dataset.k;
     const ok=$('.ok5',el),raw=$('.raw5',el),rm=$('.rm',el);
     if(ok)ok.onclick=()=>{try{const o=parseClean($('textarea',el).value);
       if(o.k!==k){$('.m5',el).innerHTML=`<div class="msg bad">${o.k===S.ds.key?'내 코드예요.':META[o.k].label+' 코드예요. 알맞은 칸에 넣어 주세요.'}</div>`;return;}
-      if(o.b&&S.info.ban&&(o.b!==S.info.ban||o.m!==S.info.mo)){$('.m5',el).innerHTML=`<div class="msg bad">${o.b}반 ${o.m}모둠 코드예요.</div>`;return;}
+      o.from=o.b&&S.info.ban&&(o.b!==S.info.ban||o.m!==S.info.mo)?`${o.b}반 ${o.m}모둠`:'';
       S.s5.mem[k]=o;S.s5.merged=false;save();view5();}catch(e){$('.m5',el).innerHTML=`<div class="msg bad">${esc(e.message||'코드를 읽을 수 없어요.')}</div>`;}};
     if(raw)raw.onclick=()=>{const o=dec(rawCode(k).slice(P_CLEAN.length));o.raw=true;S.s5.mem[k]=o;S.s5.merged=false;save();view5();};
     if(rm)rm.onclick=()=>{delete S.s5.mem[k];S.s5.merged=false;save();view5();};
