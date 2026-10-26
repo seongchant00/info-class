@@ -2332,10 +2332,10 @@ function selBar(){
   $('#sbfix').onclick=()=>{$('#fixrow').hidden=false;fixc.onchange();};
   $('#sbfixgo').onclick=()=>{const r=[...sel][0],c=+fixc.value;rec('fix',{c,val:$('#fixv').value.trim(),old:S.ds.rows[r][c]});};
 }
-// 실마리: 담당별 두 단계. 어디를 볼지 → 기준. 어느 행이 이상한지는 알려 주지 않는다. 연 횟수는 정리 결과 코드(hn)에 남는다
+// 힌트: 담당별 두 단계. 어디를 볼지 → 기준. 어느 행이 이상한지는 알려 주지 않는다. 연 횟수는 정리 결과 코드(hn)에 남는다
 function hint3(){
   const m=META[S.ds.key],h=m&&m.hints;if(!h){$('#hint3').innerHTML='';return;}const n=S.s3.hint||0;
-  $('#hint3').innerHTML=h.slice(0,n).map((t,i)=>`<div class="msg info">실마리 ${i+1} · ${esc(t)}</div>`).join('')+(n<h.length?`<button class="btn link" id="hbtn">실마리 ${n+1} 보기</button>`:'');
+  $('#hint3').innerHTML=h.slice(0,n).map((t,i)=>`<div class="msg info">힌트 ${i+1} · ${esc(t)}</div>`).join('')+(n<h.length?`<button class="btn link" id="hbtn">힌트 ${n+1} 보기</button>`:'');
   const b=$('#hbtn');if(b)b.onclick=()=>{S.s3.hint=n+1;save();hint3();};
 }
 function fmUI(){const m=$('#fm').value;$('#fa').hidden=m==='blank'||m==='notblank';$('#fb').hidden=!(m==='in'||m==='out');$('#fa').placeholder=(m==='in'||m==='out')?'최솟값':'글자';}
@@ -2760,12 +2760,14 @@ function view8(){
    <div class="row">${[['bar','막대그래프'],['pie','원그래프'],['tree','계층형 다이어그램']].map(([k,l])=>`<button class="btn ghost" data-k="${k}" aria-pressed="${t.kind===k}">${l}</button>`).join('')}</div>
    <div class="row" style="margin-top:10px">이 다이어그램을 고른 이유: <input type="text" id="why8" style="flex:1;min-width:220px" value="${esc(t.why)}"></div>
    <div class="row" style="margin-top:12px"><button class="btn" id="mk8">카드 만들기</button><span class="hint" id="mm8"></span></div><div id="c8" style="margin-top:12px"></div></div>`;
-  ORDER.forEach(k=>{$('#n8'+k).oninput=e=>{t.n[k]=e.target.value.trim();save();};$('#p8'+k).oninput=e=>{t.p[k]=e.target.value.trim();save();};});
-  $('#t8').oninput=e=>{t.tot=e.target.value.trim();save();};
+  // 표를 고치면 다시 확인해야 한다(확인 뒤 칸을 비우면 카드에 NaN이 찍혔다)
+  const edited=()=>{if(!t.ok)return;t.ok=false;save();$('#m8').innerHTML='';$('#d8').hidden=true;$('#c8').innerHTML='';};
+  ORDER.forEach(k=>{$('#n8'+k).oninput=e=>{t.n[k]=e.target.value.trim();edited();save();};$('#p8'+k).oninput=e=>{t.p[k]=e.target.value.trim();edited();save();};});
+  $('#t8').oninput=e=>{t.tot=e.target.value.trim();edited();save();};
   $('#ck8').onclick=()=>{const bad=check8(src,t);t.ok=!bad.length;save();$('#m8').innerHTML=bad.length?bad.map(b=>`<div class="msg bad">${esc(b)}</div>`).join(''):'<div class="msg ok">표 완성. 이제 다이어그램을 골라 보자.</div>';$('#d8').hidden=!t.ok;};
   $$('#d8 [data-k]').forEach(b=>b.onclick=()=>{t.kind=b.dataset.k;save();$$('#d8 [data-k]').forEach(x=>x.setAttribute('aria-pressed',x===b));});
   $('#why8').oninput=e=>{t.why=e.target.value;save();};
-  const make=async()=>{if(!t.kind||t.why.trim().length<2){$('#mm8').textContent='다이어그램을 고르고 이유를 쓰면 만들어져요.';return;}$('#mm8').textContent='';const cv=await card8(src);showCard('#c8',cv,'카드 ③');};
+  const make=async()=>{if(check8(src,t).length){t.ok=false;save();$('#d8').hidden=true;return;}if(!t.kind||t.why.trim().length<2){$('#mm8').textContent='다이어그램을 고르고 이유를 쓰면 만들어져요.';return;}$('#mm8').textContent='';const cv=await card8(src);showCard('#c8',cv,'카드 ③');};
   $('#mk8').onclick=make;if(t.ok&&t.kind&&t.why.trim().length>1)make();
   if(S.max<7){S.max=7;save();rail();}
 }
